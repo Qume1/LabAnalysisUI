@@ -26,6 +26,7 @@ namespace LabAnalysisUI
             detectionLimitFilePath = string.Empty;
             currentDetectionLimitResult = null;
             UpdateShowExceededButtonText(); // Add initial button text setup
+            btnSaveDetectionReport.Enabled = false;  // Add this line
         }
 
         private void btnSelectFile_Click(object sender, EventArgs e)
@@ -176,6 +177,7 @@ namespace LabAnalysisUI
                 detectionLimitFilePath = openFileDialog1.FileName;
                 txtDetectionLimitFilePath.Text = detectionLimitFilePath;
                 btnDetectionLimitAnalyze.Enabled = true;
+                btnSaveDetectionReport.Enabled = false;  // Add this line
             }
         }
 
@@ -202,6 +204,7 @@ namespace LabAnalysisUI
                         txtDetectionLimitResults.AppendText(message + Environment.NewLine);
                     }
                     btnDetectionLimitSave.Enabled = true;
+                    btnSaveDetectionReport.Enabled = true;  // Add this line
                 }
                 else
                 {

@@ -19,6 +19,9 @@ namespace LabAnalysisUI.Services
             public bool IsSuccess { get; set; }
             public List<(DateTime DateTime, double StdDev, double Seconds)> StdDevValues { get; set; } = new();
             public double UsedThreshold { get; set; }  // Add new property to store used threshold
+            public double DriftValue { get; set; }
+            public (DateTime DateTime, double Signal, int Line) MaxSignal { get; set; }
+            public (DateTime DateTime, double Signal, int Line) MinSignal { get; set; }
         }
 
         public AnalysisResult AnalyzeFile(string filePath, double minStdDev, double startSeconds)
@@ -150,6 +153,36 @@ namespace LabAnalysisUI.Services
             result.GeneralStats.Add($"Процент превышений СКО выше {minStdDev:F2}: {result.PercentageAboveThreshold:F3}%");
             result.GeneralStats.Add($"Общее время измерения сигнала: {result.TotalMeasurementTime} секунд");
             result.GeneralStats.Add($"Среднее значение СКО начиная с {startSeconds} секунд: {result.AverageStdDev:F3}");
+
+            // Calculate drift
+            var driftStartIndex = measurements.FindIndex(m => 
+                (m.DateTime - measurements[0].DateTime).TotalSeconds >= startSeconds);
+            
+            var driftEndIndex = measurements.FindIndex(m => 
+                (m.DateTime - measurements[0].DateTime).TotalSeconds >= startSeconds + 1800);
+
+            if (driftStartIndex != -1 && driftEndIndex != -1)
+            {
+                var driftPeriod = measurements.Skip(driftStartIndex).Take(driftEndIndex - driftStartIndex + 1).ToList();
+                
+                var maxSignal = driftPeriod.MaxBy(m => m.Signal);
+                var minSignal = driftPeriod.MinBy(m => m.Signal);
+                
+                result.MaxSignal = (maxSignal.DateTime, maxSignal.Signal, measurements.IndexOf(maxSignal) + 1);
+                result.MinSignal = (minSignal.DateTime, minSignal.Signal, measurements.IndexOf(minSignal) + 1);
+                result.DriftValue = Math.Abs(maxSignal.Signal - minSignal.Signal);
+
+                result.GeneralStats.Add("");
+                result.GeneralStats.Add($"Расчет дрейфа ({startSeconds}-{startSeconds + 1800} сек.):");
+                result.GeneralStats.Add($"Максимум: {result.MaxSignal.Signal:F3}, Время: {result.MaxSignal.DateTime:dd.MM.yyyy HH:mm:ss}, Строка: {result.MaxSignal.Line}");
+                result.GeneralStats.Add($"Минимум: {result.MinSignal.Signal:F3}, Время: {result.MinSignal.DateTime:dd.MM.yyyy HH:mm:ss}, Строка: {result.MinSignal.Line}");
+                result.GeneralStats.Add($"Значение дрейфа: {result.DriftValue:F3}");
+            }
+            else
+            {
+                result.GeneralStats.Add("");
+                result.GeneralStats.Add("Недостаточно данных для расчета дрейфа");
+            }
 
             // Объединяем все сообщения для сохранения
             result.Messages.AddRange(result.GeneralStats);

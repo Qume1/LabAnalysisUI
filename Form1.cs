@@ -47,10 +47,19 @@ namespace LabAnalysisUI
                 Cursor = Cursors.WaitCursor;
                 txtResults.Clear();
 
+                var driftStart = (double)numDriftStart.Value;
+                var driftEnd = (double)numDriftEnd.Value;
+
+                if (driftEnd <= driftStart)
+                {
+                    MessageBox.Show("Конец диапазона дрейфа должен быть больше начала", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 currentResult = await Task.Run(() => fileAnalyzer.AnalyzeFile(
                     selectedFilePath,
                     (double)numMinStdDev.Value,
-                    (double)numStartSeconds.Value));
+                    driftStart));
 
                 isExceededValuesVisible = false; // Reset to hidden state after new analysis
                 DisplayResults(false); // Initially display without exceeded values
@@ -108,7 +117,7 @@ namespace LabAnalysisUI
 
         private void UpdateShowExceededButtonText()
         {
-            btnShowExceeded.Text = isExceededValuesVisible ? "Скрыть превышения" : "Показать превышения";
+            btnShowExceeded.Text = isExceededValuesVisible ? "Скрыть СКО" : "Показать СКО";
         }
 
         private void DisplayResults(bool showExceededValues)

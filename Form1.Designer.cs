@@ -410,7 +410,7 @@
             btnSaveDetectionReport.Name = "btnSaveDetectionReport";
             btnSaveDetectionReport.Size = new Size(137, 32);
             btnSaveDetectionReport.TabIndex = 0;
-            btnSaveDetectionReport.Text = "Сохранить отчет";
+            btnSaveDetectionReport.Text = "Сохранить отчёт";
             btnSaveDetectionReport.UseVisualStyleBackColor = true;
             btnSaveDetectionReport.Click += btnSaveDetectionReport_Click;
             // 
@@ -488,7 +488,7 @@
             btnVirtualSamplesSave.Name = "btnVirtualSamplesSave";
             btnVirtualSamplesSave.Size = new Size(143, 33);
             btnVirtualSamplesSave.TabIndex = 4;
-            btnVirtualSamplesSave.Text = "Сохранить отчет";
+            btnVirtualSamplesSave.Text = "Сохранить отчёт";
             btnVirtualSamplesSave.Click += btnVirtualSamplesSave_Click;
             // 
             // lblCalibrationCoef

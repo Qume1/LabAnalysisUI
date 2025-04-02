@@ -1,5 +1,6 @@
 using LabAnalysisUI.Services;
 using System.Windows.Forms;
+using System.Diagnostics;
 
 namespace LabAnalysisUI
 {
@@ -9,6 +10,8 @@ namespace LabAnalysisUI
         private readonly FileAnalyzer fileAnalyzer;
         private FileAnalyzer.AnalysisResult currentResult;
         private bool isExceededValuesVisible = false; // Changed initial state to false
+        private string detectionLimitFilePath;
+        private FileAnalyzer.DetectionLimitResult currentDetectionLimitResult;
 
         public Form1()
         {
@@ -20,6 +23,8 @@ namespace LabAnalysisUI
         private void SetupForm()
         {
             selectedFilePath = string.Empty;
+            detectionLimitFilePath = string.Empty;
+            currentDetectionLimitResult = null;
             UpdateShowExceededButtonText(); // Add initial button text setup
         }
 
@@ -47,6 +52,7 @@ namespace LabAnalysisUI
                 Cursor = Cursors.WaitCursor;
                 txtResults.Clear();
 
+                var startSeconds = (double)numStartSeconds.Value;
                 var driftStart = (double)numDriftStart.Value;
                 var driftEnd = (double)numDriftEnd.Value;
 
@@ -59,7 +65,9 @@ namespace LabAnalysisUI
                 currentResult = await Task.Run(() => fileAnalyzer.AnalyzeFile(
                     selectedFilePath,
                     (double)numMinStdDev.Value,
-                    driftStart));
+                    startSeconds,  // Pass startSeconds for СКО calculation
+                    driftStart,   // Pass driftStart for drift calculation
+                    driftEnd));   // Pass driftEnd for drift calculation
 
                 isExceededValuesVisible = false; // Reset to hidden state after new analysis
                 DisplayResults(false); // Initially display without exceeded values
@@ -110,7 +118,24 @@ namespace LabAnalysisUI
             if (currentResult == null || !currentResult.IsSuccess)
                 return;
 
-            isExceededValuesVisible = !isExceededValuesVisible;
+            // Determine new visibility state without altering global flag yet.
+            bool newVisibility = !isExceededValuesVisible;
+
+            // If enabling exceeded values display and there are more than 200 lines, ask user confirmation.
+            if (newVisibility && currentResult.ExceededValues.Count > 200)
+            {
+                var result = MessageBox.Show("Будет выведено более 200 строк. Продолжить?",
+                                             "Предупреждение",
+                                             MessageBoxButtons.YesNo,
+                                             MessageBoxIcon.Warning);
+                if (result == DialogResult.No)
+                {
+                    return;
+                }
+            }
+
+            // Update global flag, button text, and display results.
+            isExceededValuesVisible = newVisibility;
             UpdateShowExceededButtonText();
             DisplayResults(isExceededValuesVisible);
         }
@@ -125,7 +150,7 @@ namespace LabAnalysisUI
             if (currentResult == null) return;
 
             txtResults.Clear();
-            
+
             // Показываем общую статистику всегда
             foreach (var message in currentResult.GeneralStats)
             {
@@ -140,6 +165,109 @@ namespace LabAnalysisUI
                 foreach (var value in currentResult.ExceededValues)
                 {
                     txtResults.AppendText(value + Environment.NewLine);
+                }
+            }
+        }
+
+        private void btnDetectionLimitSelectFile_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                detectionLimitFilePath = openFileDialog1.FileName;
+                txtDetectionLimitFilePath.Text = detectionLimitFilePath;
+                btnDetectionLimitAnalyze.Enabled = true;
+            }
+        }
+
+        private async void btnDetectionLimitAnalyze_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(detectionLimitFilePath))
+            {
+                MessageBox.Show("Выберите файл для анализа", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                btnDetectionLimitAnalyze.Enabled = false;
+                Cursor = Cursors.WaitCursor;
+                txtDetectionLimitResults.Clear();
+
+                currentDetectionLimitResult = await Task.Run(() => fileAnalyzer.AnalyzeDetectionLimit(detectionLimitFilePath));
+
+                if (currentDetectionLimitResult.IsSuccess)
+                {
+                    foreach (var message in currentDetectionLimitResult.Messages)
+                    {
+                        txtDetectionLimitResults.AppendText(message + Environment.NewLine);
+                    }
+                    btnDetectionLimitSave.Enabled = true;
+                }
+                else
+                {
+                    MessageBox.Show("Ошибка при анализе файла", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при анализе файла: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnDetectionLimitAnalyze.Enabled = true;
+                Cursor = Cursors.Default;
+            }
+        }
+
+        private void btnDetectionLimitSave_Click(object sender, EventArgs e)
+        {
+            if (currentDetectionLimitResult == null || !currentDetectionLimitResult.IsSuccess)
+                return;
+
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*",
+                Title = "Сохранить результаты анализа",
+                DefaultExt = "txt"
+            };
+
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    fileAnalyzer.SaveDetectionLimitResults(currentDetectionLimitResult, saveFileDialog.FileName);
+                    MessageBox.Show("Результаты успешно сохранены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void btnSaveDetectionReport_Click(object sender, EventArgs e)
+        {
+            if (currentDetectionLimitResult == null || currentDetectionLimitResult.Messages.Count == 0)
+            {
+                MessageBox.Show("Нет данных для сохранения отчета.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*";
+                saveFileDialog.Title = "Сохранить отчет";
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        fileAnalyzer.SaveDetectionLimitResults(currentDetectionLimitResult, saveFileDialog.FileName);
+                        MessageBox.Show("Отчет успешно сохранен.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Ошибка при сохранении отчета: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }

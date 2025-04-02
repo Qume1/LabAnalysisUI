@@ -26,6 +26,15 @@
         private System.Windows.Forms.Label lblDriftStart;
         private System.Windows.Forms.Label lblDriftEnd;
 
+        // New components for Detection Limit tab
+        private System.Windows.Forms.Button btnDetectionLimitSelectFile;
+        private System.Windows.Forms.TextBox txtDetectionLimitFilePath;
+        private System.Windows.Forms.Label lblDetectionLimitFile;
+        private System.Windows.Forms.TextBox txtDetectionLimitResults;
+        private System.Windows.Forms.Button btnDetectionLimitAnalyze;
+        private System.Windows.Forms.Button btnDetectionLimitSave;
+        private System.Windows.Forms.Button btnSaveDetectionReport;
+
         /// <summary>
         ///  Clean up any resources being used.
         /// </summary>
@@ -65,6 +74,13 @@
             lblDriftEnd = new Label();
             numDriftEnd = new NumericUpDown();
             tabDetectionLimit = new TabPage();
+            lblDetectionLimitFile = new Label();
+            txtDetectionLimitFilePath = new TextBox();
+            btnDetectionLimitSelectFile = new Button();
+            txtDetectionLimitResults = new TextBox();
+            btnDetectionLimitAnalyze = new Button();
+            btnDetectionLimitSave = new Button();
+            btnSaveDetectionReport = new Button();
             tabVirtualSamples = new TabPage();
             openFileDialog1 = new OpenFileDialog();
             tabControl1.SuspendLayout();
@@ -73,6 +89,7 @@
             ((System.ComponentModel.ISupportInitialize)numStartSeconds).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numDriftStart).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numDriftEnd).BeginInit();
+            tabDetectionLimit.SuspendLayout();
             SuspendLayout();
             // 
             // tabControl1
@@ -266,6 +283,13 @@
             // 
             // tabDetectionLimit
             // 
+            tabDetectionLimit.Controls.Add(lblDetectionLimitFile);
+            tabDetectionLimit.Controls.Add(txtDetectionLimitFilePath);
+            tabDetectionLimit.Controls.Add(btnDetectionLimitSelectFile);
+            tabDetectionLimit.Controls.Add(txtDetectionLimitResults);
+            tabDetectionLimit.Controls.Add(btnDetectionLimitAnalyze);
+            tabDetectionLimit.Controls.Add(btnDetectionLimitSave);
+            tabDetectionLimit.Controls.Add(btnSaveDetectionReport);
             tabDetectionLimit.Location = new Point(4, 29);
             tabDetectionLimit.Margin = new Padding(3, 4, 3, 4);
             tabDetectionLimit.Name = "tabDetectionLimit";
@@ -273,6 +297,78 @@
             tabDetectionLimit.TabIndex = 1;
             tabDetectionLimit.Text = "Предел детектирования";
             tabDetectionLimit.UseVisualStyleBackColor = true;
+            // 
+            // lblDetectionLimitFile
+            // 
+            lblDetectionLimitFile.AutoSize = true;
+            lblDetectionLimitFile.Location = new Point(11, 27);
+            lblDetectionLimitFile.Name = "lblDetectionLimitFile";
+            lblDetectionLimitFile.Size = new Size(195, 20);
+            lblDetectionLimitFile.TabIndex = 0;
+            lblDetectionLimitFile.Text = "Выберите текстовый файл:";
+            // 
+            // txtDetectionLimitFilePath
+            // 
+            txtDetectionLimitFilePath.Location = new Point(11, 60);
+            txtDetectionLimitFilePath.Margin = new Padding(3, 4, 3, 4);
+            txtDetectionLimitFilePath.Name = "txtDetectionLimitFilePath";
+            txtDetectionLimitFilePath.ReadOnly = true;
+            txtDetectionLimitFilePath.Size = new Size(457, 27);
+            txtDetectionLimitFilePath.TabIndex = 1;
+            // 
+            // btnDetectionLimitSelectFile
+            // 
+            btnDetectionLimitSelectFile.Location = new Point(474, 52);
+            btnDetectionLimitSelectFile.Margin = new Padding(3, 4, 3, 4);
+            btnDetectionLimitSelectFile.Name = "btnDetectionLimitSelectFile";
+            btnDetectionLimitSelectFile.Size = new Size(114, 42);
+            btnDetectionLimitSelectFile.TabIndex = 2;
+            btnDetectionLimitSelectFile.Text = "Обзор...";
+            btnDetectionLimitSelectFile.UseVisualStyleBackColor = true;
+            btnDetectionLimitSelectFile.Click += btnDetectionLimitSelectFile_Click;
+            // 
+            // txtDetectionLimitResults
+            // 
+            txtDetectionLimitResults.Location = new Point(11, 171);
+            txtDetectionLimitResults.Margin = new Padding(3, 4, 3, 4);
+            txtDetectionLimitResults.Multiline = true;
+            txtDetectionLimitResults.Name = "txtDetectionLimitResults";
+            txtDetectionLimitResults.ReadOnly = true;
+            txtDetectionLimitResults.ScrollBars = ScrollBars.Vertical;
+            txtDetectionLimitResults.Size = new Size(902, 532);
+            txtDetectionLimitResults.TabIndex = 3;
+            // 
+            // btnDetectionLimitAnalyze
+            // 
+            btnDetectionLimitAnalyze.Enabled = false;
+            btnDetectionLimitAnalyze.Location = new Point(11, 109);
+            btnDetectionLimitAnalyze.Margin = new Padding(3, 4, 3, 4);
+            btnDetectionLimitAnalyze.Name = "btnDetectionLimitAnalyze";
+            btnDetectionLimitAnalyze.Size = new Size(132, 42);
+            btnDetectionLimitAnalyze.TabIndex = 4;
+            btnDetectionLimitAnalyze.Text = "Анализировать";
+            btnDetectionLimitAnalyze.Click += btnDetectionLimitAnalyze_Click;
+            // 
+            // btnDetectionLimitSave
+            // 
+            btnDetectionLimitSave.Enabled = false;
+            btnDetectionLimitSave.Location = new Point(11, 670);
+            btnDetectionLimitSave.Margin = new Padding(3, 4, 3, 4);
+            btnDetectionLimitSave.Name = "btnDetectionLimitSave";
+            btnDetectionLimitSave.Size = new Size(137, 33);
+            btnDetectionLimitSave.TabIndex = 5;
+            btnDetectionLimitSave.Text = "Сохранить отчёт";
+            btnDetectionLimitSave.Click += btnDetectionLimitSave_Click;
+            // 
+            // btnSaveDetectionReport
+            // 
+            btnSaveDetectionReport.Location = new Point(11, 738);
+            btnSaveDetectionReport.Name = "btnSaveDetectionReport";
+            btnSaveDetectionReport.Size = new Size(137, 32);
+            btnSaveDetectionReport.TabIndex = 0;
+            btnSaveDetectionReport.Text = "Сохранить отчет";
+            btnSaveDetectionReport.UseVisualStyleBackColor = true;
+            btnSaveDetectionReport.Click += btnSaveDetectionReport_Click;
             // 
             // tabVirtualSamples
             // 
@@ -305,6 +401,8 @@
             ((System.ComponentModel.ISupportInitialize)numStartSeconds).EndInit();
             ((System.ComponentModel.ISupportInitialize)numDriftStart).EndInit();
             ((System.ComponentModel.ISupportInitialize)numDriftEnd).EndInit();
+            tabDetectionLimit.ResumeLayout(false);
+            tabDetectionLimit.PerformLayout();
             ResumeLayout(false);
         }
 

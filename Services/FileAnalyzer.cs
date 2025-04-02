@@ -24,7 +24,18 @@ namespace LabAnalysisUI.Services
             public (DateTime DateTime, double Signal, int Line) MinSignal { get; set; }
         }
 
-        public AnalysisResult AnalyzeFile(string filePath, double minStdDev, double startSeconds)
+        // Update the DetectionLimitResult class
+        public class DetectionLimitResult
+        {
+            public bool IsSuccess { get; set; }
+            public List<string> Messages { get; set; } = new();
+            public List<string> AnalysisResults { get; set; } = new();
+            public double PercentageAboveThreshold { get; set; }
+            public int TotalCount { get; set; }
+            public int CountAboveThreshold { get; set; }
+        }
+
+        public AnalysisResult AnalyzeFile(string filePath, double minStdDev, double startSeconds, double driftStart, double driftEnd)
         {
             var result = new AnalysisResult();
             var measurements = ParseFile(filePath, result);
@@ -32,11 +43,138 @@ namespace LabAnalysisUI.Services
             if (!result.IsSuccess || measurements.Count == 0)
                 return result;
 
-            CalculateStatistics(measurements, minStdDev, startSeconds, result);
+            CalculateStatistics(measurements, minStdDev, startSeconds, driftStart, driftEnd, result);
+            return result;
+        }
+
+        // Add new method for detection limit analysis
+        public DetectionLimitResult AnalyzeDetectionLimit(string filePath)
+        {
+            var result = new DetectionLimitResult();
+            try
+            {
+                var lines = File.ReadAllLines(filePath).ToList();
+                bool skipFirstThreeLines = true;
+
+                // Check first three lines for numbers
+                for (int i = 0; i < 3 && i < lines.Count; i++)
+                {
+                    if (Regex.IsMatch(lines[i], @"\d"))
+                    {
+                        skipFirstThreeLines = false;
+                        break;
+                    }
+                }
+
+                if (skipFirstThreeLines)
+                {
+                    lines = lines.Skip(3).ToList();
+                }
+
+                string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})\s*(?<range>(?<min>[-+]?\d+[.,]\d+)\s*-\s*(?<max>[-+]?\d+[.,]\d+))?";
+                var regex = new Regex(pattern);
+
+                lines.Reverse(); // Process from bottom to top
+
+                for (int i = 0; i <= lines.Count - 5; i += 5)
+                {
+                    var values = new List<double>();
+                    var timestamps = new List<DateTime>();
+                    double minValue = double.MaxValue;
+                    double maxValue = double.MinValue;
+                    bool hasRange = false;
+
+                    for (int j = i; j < i + 5 && j < lines.Count; j++)
+                    {
+                        var match = regex.Match(lines[j]);
+                        if (match.Success)
+                        {
+                            string dateStr = match.Groups["date"].Value;
+                            string timeStr = match.Groups["time"].Value;
+                            string valueStr = match.Groups["value"].Value.Replace(',', '.');
+                            string minStr = match.Groups["min"].Value.Replace(',', '.');
+                            string maxStr = match.Groups["max"].Value.Replace(',', '.');
+
+                            if (DateTime.TryParseExact(dateStr + " " + timeStr, 
+                                "dd.MM.yyyy HH:mm:ss", 
+                                CultureInfo.InvariantCulture, 
+                                DateTimeStyles.None, 
+                                out DateTime dt) &&
+                                double.TryParse(valueStr, 
+                                    NumberStyles.Any, 
+                                    CultureInfo.InvariantCulture, 
+                                    out double value))
+                            {
+                                values.Add(value);
+                                timestamps.Add(dt);
+
+                                if (double.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double min) &&
+                                    double.TryParse(maxStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double max))
+                                {
+                                    minValue = Math.Min(minValue, min);
+                                    maxValue = Math.Max(maxValue, max);
+                                    hasRange = true;
+                                }
+                            }
+                        }
+                    }
+
+                    if (values.Count == 5)
+                    {
+                        double detectionLimit = CalculateStdDev(values) * 3;
+                        DateTime startTime = timestamps.Min();
+                        DateTime endTime = timestamps.Max();
+                        string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
+
+                        string analysisResult = hasRange
+                            ? $"Предел детектирования: {detectionLimit:F3} {timeInterval} {minValue:F2} - {maxValue:F2})"
+                            : $"Предел детектирования: {detectionLimit:F3} {timeInterval}";
+
+                        result.AnalysisResults.Add(analysisResult);
+                        result.TotalCount++;
+
+                        if (detectionLimit > 0.2)
+                        {
+                            result.CountAboveThreshold++;
+                        }
+                    }
+                }
+
+                if (result.TotalCount > 0)
+                {
+                    result.PercentageAboveThreshold = (double)result.CountAboveThreshold / result.TotalCount * 100;
+                    result.Messages.AddRange(result.AnalysisResults);
+                    result.Messages.Add("");
+                    result.Messages.Add($"Процент превышений Предела детектирования выше 0.2: {result.PercentageAboveThreshold:F3}%");
+                }
+                else
+                {
+                    result.Messages.Add("Нет данных для анализа.");
+                }
+
+                result.IsSuccess = true;
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.Messages.Add($"Ошибка при анализе: {ex.Message}");
+            }
             return result;
         }
 
         public void SaveResultsToFile(AnalysisResult result, string filePath)
+        {
+            try
+            {
+                File.WriteAllLines(filePath, result.Messages);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка при сохранении файла: {ex.Message}");
+            }
+        }
+
+        public void SaveDetectionLimitResults(DetectionLimitResult result, string filePath)
         {
             try
             {
@@ -109,7 +247,7 @@ namespace LabAnalysisUI.Services
             }
         }
 
-        private void CalculateStatistics(List<Measurement> measurements, double minStdDev, double startSeconds, AnalysisResult result)
+        private void CalculateStatistics(List<Measurement> measurements, double minStdDev, double startSeconds, double driftStart, double driftEnd, AnalysisResult result)
         {
             if (measurements.Count < 30)
             {
@@ -120,6 +258,7 @@ namespace LabAnalysisUI.Services
 
             result.UsedThreshold = minStdDev;
             int countAboveThreshold = 0;
+            int totalMeasurementsAfterStart = 0;
             var stdDevs = new List<double>();
 
             for (int i = 29; i < measurements.Count; i++)
@@ -129,39 +268,40 @@ namespace LabAnalysisUI.Services
                 var stdDev = CalculateStdDev(signals);
 
                 var lastMeasurement = measurements[i];
-                var timeSinceStart = lastMeasurement.DateTime - measurements[0].DateTime;
+                var timeSinceStart = (lastMeasurement.DateTime - measurements[0].DateTime).TotalSeconds;
 
-                if (timeSinceStart.TotalSeconds >= startSeconds)
+                if (timeSinceStart >= startSeconds)  // Use startSeconds for СКО calculation
                 {
+                    totalMeasurementsAfterStart++;
                     stdDevs.Add(stdDev);
-                    result.StdDevValues.Add((lastMeasurement.DateTime, stdDev, timeSinceStart.TotalSeconds));
+                    result.StdDevValues.Add((lastMeasurement.DateTime, stdDev, timeSinceStart));
                     
                     if (stdDev > minStdDev)
                     {
                         countAboveThreshold++;
-                        var message = $"{lastMeasurement.DateTime:dd.MM.yyyy HH:mm:ss} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
+                        var message = $"{lastMeasurement.DateTime:dd.MM.yyyy HH:mm:ss} ({timeSinceStart:F0} секунд) - СКО: {stdDev:F3}";
                         result.ExceededValues.Add(message);
                     }
                 }
             }
 
-            result.PercentageAboveThreshold = (double)countAboveThreshold / measurements.Count * 100;
+            // Calculate percentage using measurements after startSeconds
+            result.PercentageAboveThreshold = totalMeasurementsAfterStart > 0 
+                ? (double)countAboveThreshold / totalMeasurementsAfterStart * 100 
+                : 0;
+
             result.TotalMeasurementTime = measurements.Count;
             result.AverageStdDev = stdDevs.Count > 0 ? stdDevs.Average() : 0;
 
-            // Updated statistics messages to show the actual threshold
-            result.GeneralStats.Add($"Процент превышений СКО выше {minStdDev:F2}: {result.PercentageAboveThreshold:F3}%");
+            result.GeneralStats.Add($"Процент превышений СКО выше {minStdDev:F2} (начиная с {startSeconds} сек.): {result.PercentageAboveThreshold:F3}%");
             result.GeneralStats.Add($"Общее время измерения сигнала: {result.TotalMeasurementTime} секунд");
             result.GeneralStats.Add($"Среднее значение СКО начиная с {startSeconds} секунд: {result.AverageStdDev:F3}");
 
-            // Calculate drift
-            var driftStartIndex = measurements.FindIndex(m => 
-                (m.DateTime - measurements[0].DateTime).TotalSeconds >= startSeconds);
-            
-            var driftEndIndex = measurements.FindIndex(m => 
-                (m.DateTime - measurements[0].DateTime).TotalSeconds >= startSeconds + 1800);
+            // Calculate drift using driftStart and driftEnd
+            var driftStartIndex = measurements.FindIndex(m => (m.DateTime - measurements[0].DateTime).TotalSeconds >= driftStart);
+            var driftEndIndex = measurements.FindIndex(m => (m.DateTime - measurements[0].DateTime).TotalSeconds >= driftEnd);
 
-            if (driftStartIndex != -1 && driftEndIndex != -1)
+            if (driftStartIndex != -1 && driftEndIndex != -1 && driftEndIndex >= driftStartIndex)
             {
                 var driftPeriod = measurements.Skip(driftStartIndex).Take(driftEndIndex - driftStartIndex + 1).ToList();
                 
@@ -173,7 +313,7 @@ namespace LabAnalysisUI.Services
                 result.DriftValue = Math.Abs(maxSignal.Signal - minSignal.Signal);
 
                 result.GeneralStats.Add("");
-                result.GeneralStats.Add($"Расчет дрейфа ({startSeconds}-{startSeconds + 1800} сек.):");
+                result.GeneralStats.Add($"Расчет дрейфа ({driftStart}-{driftEnd} сек.):");
                 result.GeneralStats.Add($"Максимум: {result.MaxSignal.Signal:F3}, Время: {result.MaxSignal.DateTime:dd.MM.yyyy HH:mm:ss}, Строка: {result.MaxSignal.Line}");
                 result.GeneralStats.Add($"Минимум: {result.MinSignal.Signal:F3}, Время: {result.MinSignal.DateTime:dd.MM.yyyy HH:mm:ss}, Строка: {result.MinSignal.Line}");
                 result.GeneralStats.Add($"Значение дрейфа: {result.DriftValue:F3}");
@@ -184,7 +324,6 @@ namespace LabAnalysisUI.Services
                 result.GeneralStats.Add("Недостаточно данных для расчета дрейфа");
             }
 
-            // Объединяем все сообщения для сохранения
             result.Messages.AddRange(result.GeneralStats);
             result.Messages.AddRange(result.ExceededValues);
         }

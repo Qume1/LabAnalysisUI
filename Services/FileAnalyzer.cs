@@ -18,13 +18,13 @@ namespace LabAnalysisUI.Services
             public int TotalMeasurementTime { get; set; }
             public bool IsSuccess { get; set; }
             public List<(DateTime DateTime, double StdDev, double Seconds)> StdDevValues { get; set; } = new();
-            public double UsedThreshold { get; set; }  // Add new property to store used threshold
+            public double UsedThreshold { get; set; }  // Добавить новое свойство для хранения использованного порога
             public double DriftValue { get; set; }
             public (DateTime DateTime, double Signal, int Line) MaxSignal { get; set; }
             public (DateTime DateTime, double Signal, int Line) MinSignal { get; set; }
         }
 
-        // Update the DetectionLimitResult class
+        // Обновить класс DetectionLimitResult
         public class DetectionLimitResult
         {
             public bool IsSuccess { get; set; }
@@ -35,7 +35,7 @@ namespace LabAnalysisUI.Services
             public int CountAboveThreshold { get; set; }
         }
 
-        // Add new VirtualSamplesResult class
+        // Добавить новый класс VirtualSamplesResult
         public class VirtualSamplesResult
         {
             public bool IsSuccess { get; set; }
@@ -67,7 +67,7 @@ namespace LabAnalysisUI.Services
             return result;
         }
 
-        // Add new method for detection limit analysis
+        // Добавить новый метод для анализа предела детектирования
         public DetectionLimitResult AnalyzeDetectionLimit(string filePath)
         {
             var result = new DetectionLimitResult();
@@ -76,7 +76,7 @@ namespace LabAnalysisUI.Services
                 var lines = File.ReadAllLines(filePath).ToList();
                 bool skipFirstThreeLines = true;
 
-                // Check first three lines for numbers
+                // Проверить первые три строки на наличие чисел
                 for (int i = 0; i < 3 && i < lines.Count; i++)
                 {
                     if (Regex.IsMatch(lines[i], @"\d"))
@@ -94,7 +94,7 @@ namespace LabAnalysisUI.Services
                 string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})\s*(?<range>(?<min>[-+]?\d+[.,]\d+)\s*-\s*(?<max>[-+]?\d+[.,]\d+))?";
                 var regex = new Regex(pattern);
 
-                lines.Reverse(); // Process from bottom to top
+                lines.Reverse(); // Обработка с конца к началу
 
                 for (int i = 0; i <= lines.Count - 5; i += 5)
                 {
@@ -182,7 +182,7 @@ namespace LabAnalysisUI.Services
             return result;
         }
 
-        // Add new methods to FileAnalyzer class
+        // Добавить новые методы в класс FileAnalyzer
 
         public void SaveVirtualSamplesResults(VirtualSamplesResult result, string filePath)
         {
@@ -308,7 +308,7 @@ namespace LabAnalysisUI.Services
                 var lastMeasurement = measurements[i];
                 var timeSinceStart = (lastMeasurement.DateTime - measurements[0].DateTime).TotalSeconds;
 
-                if (timeSinceStart >= startSeconds)  // Use startSeconds for СКО calculation
+                if (timeSinceStart >= startSeconds)  // Использовать startSeconds для расчета СКО
                 {
                     totalMeasurementsAfterStart++;
                     stdDevs.Add(stdDev);
@@ -323,7 +323,7 @@ namespace LabAnalysisUI.Services
                 }
             }
 
-            // Calculate percentage using measurements after startSeconds
+            // Рассчитать процент, используя измерения после startSeconds
             result.PercentageAboveThreshold = totalMeasurementsAfterStart > 0 
                 ? (double)countAboveThreshold / totalMeasurementsAfterStart * 100 
                 : 0;
@@ -335,7 +335,7 @@ namespace LabAnalysisUI.Services
             result.GeneralStats.Add($"Общее время измерения сигнала: {result.TotalMeasurementTime} секунд");
             result.GeneralStats.Add($"Среднее значение СКО начиная с {startSeconds} секунд: {result.AverageStdDev:F3}");
 
-            // Calculate drift using driftStart and driftEnd
+            // Рассчитать дрейф, используя driftStart и driftEnd
             var driftStartIndex = measurements.FindIndex(m => (m.DateTime - measurements[0].DateTime).TotalSeconds >= driftStart);
             var driftEndIndex = measurements.FindIndex(m => (m.DateTime - measurements[0].DateTime).TotalSeconds >= driftEnd);
 
@@ -462,9 +462,7 @@ namespace LabAnalysisUI.Services
 
                 foreach (var limit in result.DetectionLimits)
                 {
-                    result.Messages.Add($"Предел детектирования: {limit.DetectionLimit:F3} " +
-                                      $"(с {limit.StartTime:HH:mm:ss} по {limit.EndTime:HH:mm:ss}) " +
-                                      $"(Строки: {limit.StartLine} - {limit.EndLine})");
+                    result.Messages.Add($"Предел детектирования: {limit.DetectionLimit:F3} (с {limit.StartTime:HH:mm:ss} по {limit.EndTime:HH:mm:ss}) (Строки: {limit.StartLine} - {limit.EndLine})");
                 }
 
                 result.Messages.Add($"Процент превышений предела детектирования выше 0.2: {result.PercentageAboveThreshold:F3}%");

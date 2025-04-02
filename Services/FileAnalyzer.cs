@@ -35,6 +35,26 @@ namespace LabAnalysisUI.Services
             public int CountAboveThreshold { get; set; }
         }
 
+        // Add new VirtualSamplesResult class
+        public class VirtualSamplesResult
+        {
+            public bool IsSuccess { get; set; }
+            public List<string> Messages { get; set; } = new();
+            public List<DetectionLimitEntry> DetectionLimits { get; set; } = new();
+            public double PercentageAboveThreshold { get; set; }
+            public int TotalCount { get; set; }
+            public int CountAboveThreshold { get; set; }
+        }
+
+        public class DetectionLimitEntry
+        {
+            public double DetectionLimit { get; set; }
+            public DateTime StartTime { get; set; }
+            public DateTime EndTime { get; set; }
+            public int StartLine { get; set; }
+            public int EndLine { get; set; }
+        }
+
         public AnalysisResult AnalyzeFile(string filePath, double minStdDev, double startSeconds, double driftStart, double driftEnd)
         {
             var result = new AnalysisResult();
@@ -162,6 +182,16 @@ namespace LabAnalysisUI.Services
             return result;
         }
 
+        // Add new methods to FileAnalyzer class
+
+        public void SaveVirtualSamplesResults(VirtualSamplesResult result, string filePath)
+        {
+            if (result == null || !result.IsSuccess)
+                throw new ArgumentException("Нет данных для сохранения");
+
+            File.WriteAllLines(filePath, result.Messages);
+        }
+
         public void SaveResultsToFile(AnalysisResult result, string filePath)
         {
             try
@@ -246,6 +276,14 @@ namespace LabAnalysisUI.Services
                 return new List<Measurement>();
             }
         }
+        private List<Measurement> ParseFile(string filePath, VirtualSamplesResult result)
+        {
+            var analysisResult = new AnalysisResult();
+            var measurements = ParseFile(filePath, analysisResult);
+            result.IsSuccess = analysisResult.IsSuccess;
+            result.Messages.AddRange(analysisResult.Messages);
+            return measurements;
+        }
 
         private void CalculateStatistics(List<Measurement> measurements, double minStdDev, double startSeconds, double driftStart, double driftEnd, AnalysisResult result)
         {
@@ -328,12 +366,116 @@ namespace LabAnalysisUI.Services
             result.Messages.AddRange(result.ExceededValues);
         }
 
-        private double CalculateStdDev(List<double> values)
+        private static double CalculateStdDev(List<double> values)
         {
             if (values.Count < 2) return 0;
             var mean = values.Average();
             var sumSquares = values.Sum(x => (x - mean) * (x - mean));
             return Math.Sqrt(sumSquares / (values.Count - 1));
+        }
+        private static double CalculateRegressionLine(List<Measurement> beforeSegment, List<Measurement> firstSegment, List<Measurement> lastSegment, List<Measurement> afterSegment)
+        {
+            double AverageOrZero(List<Measurement> segment) => segment.Count > 0 ? segment.Average(m => m.Signal) : 0;
+
+            double firstPointY = (AverageOrZero(beforeSegment) + AverageOrZero(firstSegment)) / 2;
+            double secondPointY = (AverageOrZero(lastSegment) + AverageOrZero(afterSegment)) / 2;
+
+            double firstPointX = 0;
+            double secondPointX = 1;
+
+            double slope = (secondPointY - firstPointY) / (secondPointX - firstPointX);
+            double intercept = firstPointY - slope * firstPointX;
+
+            return slope * 0.5 + intercept;
+        }
+
+        private static double CalculateSignedArea(List<Measurement> segment, double regressionLine)
+        {
+            double area = 0;
+            foreach (var measurement in segment)
+            {
+                area += (measurement.Signal - regressionLine);
+            }
+            return area;
+        }
+
+        public VirtualSamplesResult AnalyzeVirtualSamples(string filePath, double calibrationCoef = 252.1, int intervalSize = 60)
+        {
+            var result = new VirtualSamplesResult();
+            try
+            {
+                var measurements = ParseFile(filePath, result);
+
+                if (measurements.Count < 1800 + intervalSize + 18)
+                {
+                    result.Messages.Add($"Недостаточно данных для расчёта по {intervalSize} измерениям начиная с 1800 строки.");
+                    return result;
+                }
+
+                List<double> areas = new List<double>();
+
+                for (int i = 1800; i <= measurements.Count - intervalSize; i += (intervalSize + 18))
+                {
+                    var segment = measurements.Skip(i).Take(intervalSize).ToList();
+                    var beforeSegment = measurements.Skip(i - 9).Take(9).ToList();
+                    var firstSegment = measurements.Skip(i).Take(1).ToList();
+                    var lastSegment = measurements.Skip(i + intervalSize - 1).Take(1).ToList();
+                    var afterSegment = measurements.Skip(i + intervalSize).Take(9).ToList();
+
+                    double regressionLine = CalculateRegressionLine(beforeSegment, firstSegment, lastSegment, afterSegment);
+                    double area = CalculateSignedArea(segment, regressionLine) / calibrationCoef;
+                    areas.Add(area);
+                }
+
+                for (int i = 0; i <= areas.Count - 5; i += 5)
+                {
+                    var group = areas.Skip(i).Take(5).ToList();
+                    if (group.Count == 5)
+                    {
+                        double stdDev = CalculateStdDev(group) * 3;
+                        DateTime startTime = measurements[1800 + i * (intervalSize + 18)].DateTime;
+                        DateTime endTime = measurements[1800 + (i + 4) * (intervalSize + 18) + (intervalSize - 1)].DateTime;
+                        int startLine = 1800 + i * (intervalSize + 18) + 1;
+                        int endLine = 1800 + (i + 4) * (intervalSize + 18) + intervalSize;
+
+                        var entry = new DetectionLimitEntry
+                        {
+                            DetectionLimit = stdDev,
+                            StartTime = startTime,
+                            EndTime = endTime,
+                            StartLine = startLine,
+                            EndLine = endLine
+                        };
+
+                        result.DetectionLimits.Add(entry);
+                        result.TotalCount++;
+
+                        if (stdDev > 0.2)
+                        {
+                            result.CountAboveThreshold++;
+                        }
+                    }
+                }
+
+                result.PercentageAboveThreshold = (double)result.CountAboveThreshold / result.TotalCount * 100;
+                result.IsSuccess = true;
+
+                foreach (var limit in result.DetectionLimits)
+                {
+                    result.Messages.Add($"Предел детектирования: {limit.DetectionLimit:F3} " +
+                                      $"(с {limit.StartTime:HH:mm:ss} по {limit.EndTime:HH:mm:ss}) " +
+                                      $"(Строки: {limit.StartLine} - {limit.EndLine})");
+                }
+
+                result.Messages.Add($"Процент превышений предела детектирования выше 0.2: {result.PercentageAboveThreshold:F3}%");
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.Messages.Add($"Ошибка при анализе: {ex.Message}");
+            }
+
+            return result;
         }
     }
 }

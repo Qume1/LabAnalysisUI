@@ -25,6 +25,7 @@
         private System.Windows.Forms.NumericUpDown numDriftEnd;
         private System.Windows.Forms.Label lblDriftStart;
         private System.Windows.Forms.Label lblDriftEnd;
+        private System.Windows.Forms.CheckBox chkFilterExceeded;
 
         // New components for Detection Limit tab
         private System.Windows.Forms.Button btnDetectionLimitSelectFile;
@@ -35,6 +36,20 @@
         private System.Windows.Forms.Button btnDetectionLimitSave;
         private System.Windows.Forms.Button btnSaveDetectionReport;
 
+        // New components for Virtual Samples tab
+        private System.Windows.Forms.Button btnVirtualSamplesSelectFile;
+        private System.Windows.Forms.TextBox txtVirtualSamplesFilePath;
+        private System.Windows.Forms.Button btnVirtualSamplesAnalyze;
+        private System.Windows.Forms.TextBox txtVirtualSamplesResults;
+        private System.Windows.Forms.Button btnVirtualSamplesSave;
+
+        // New components for Virtual Samples tab
+        
+        private System.Windows.Forms.NumericUpDown numCalibrationCoef;
+        private System.Windows.Forms.NumericUpDown numIntervalSize;
+        private System.Windows.Forms.Label lblCalibrationCoef;
+        private System.Windows.Forms.Label lblIntervalSize;
+
         /// <summary>
         ///  Clean up any resources being used.
         /// </summary>
@@ -44,6 +59,10 @@
             if (disposing && (components != null))
             {
                 components.Dispose();
+            }
+            if (disposing && (chkFilterExceeded != null))
+            {
+                chkFilterExceeded.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -73,6 +92,7 @@
             numDriftStart = new NumericUpDown();
             lblDriftEnd = new Label();
             numDriftEnd = new NumericUpDown();
+            chkFilterExceeded = new CheckBox();
             tabDetectionLimit = new TabPage();
             lblDetectionLimitFile = new Label();
             txtDetectionLimitFilePath = new TextBox();
@@ -82,6 +102,16 @@
             btnDetectionLimitSave = new Button();
             btnSaveDetectionReport = new Button();
             tabVirtualSamples = new TabPage();
+            label1 = new Label();
+            btnVirtualSamplesSelectFile = new Button();
+            txtVirtualSamplesFilePath = new TextBox();
+            btnVirtualSamplesAnalyze = new Button();
+            txtVirtualSamplesResults = new TextBox();
+            btnVirtualSamplesSave = new Button();
+            lblCalibrationCoef = new Label();
+            numCalibrationCoef = new NumericUpDown();
+            lblIntervalSize = new Label();
+            numIntervalSize = new NumericUpDown();
             openFileDialog1 = new OpenFileDialog();
             tabControl1.SuspendLayout();
             tabRSD.SuspendLayout();
@@ -90,6 +120,9 @@
             ((System.ComponentModel.ISupportInitialize)numDriftStart).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numDriftEnd).BeginInit();
             tabDetectionLimit.SuspendLayout();
+            tabVirtualSamples.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numCalibrationCoef).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numIntervalSize).BeginInit();
             SuspendLayout();
             // 
             // tabControl1
@@ -122,6 +155,7 @@
             tabRSD.Controls.Add(numDriftStart);
             tabRSD.Controls.Add(lblDriftEnd);
             tabRSD.Controls.Add(numDriftEnd);
+            tabRSD.Controls.Add(chkFilterExceeded);
             tabRSD.Location = new Point(4, 29);
             tabRSD.Margin = new Padding(3, 4, 3, 4);
             tabRSD.Name = "tabRSD";
@@ -167,6 +201,7 @@
             lblMinStdDev.Size = new Size(216, 20);
             lblMinStdDev.TabIndex = 3;
             lblMinStdDev.Text = "Минимальное значение СКО:";
+            lblMinStdDev.Click += lblMinStdDev_Click;
             // 
             // numMinStdDev
             // 
@@ -183,7 +218,7 @@
             // lblStartSeconds
             // 
             lblStartSeconds.AutoSize = true;
-            lblStartSeconds.Location = new Point(8, 174);
+            lblStartSeconds.Location = new Point(50, 174);
             lblStartSeconds.Name = "lblStartSeconds";
             lblStartSeconds.Size = new Size(174, 20);
             lblStartSeconds.TabIndex = 5;
@@ -213,7 +248,7 @@
             // btnSaveOutput
             // 
             btnSaveOutput.Enabled = false;
-            btnSaveOutput.Location = new Point(12, 781);
+            btnSaveOutput.Location = new Point(12, 768);
             btnSaveOutput.Margin = new Padding(3, 4, 3, 4);
             btnSaveOutput.Name = "btnSaveOutput";
             btnSaveOutput.Size = new Size(137, 33);
@@ -227,7 +262,7 @@
             btnShowExceeded.Location = new Point(872, 174);
             btnShowExceeded.Margin = new Padding(3, 4, 3, 4);
             btnShowExceeded.Name = "btnShowExceeded";
-            btnShowExceeded.Size = new Size(160, 33);
+            btnShowExceeded.Size = new Size(160, 32);
             btnShowExceeded.TabIndex = 9;
             btnShowExceeded.Text = "Показать превышения";
             btnShowExceeded.Click += btnShowExceeded_Click;
@@ -265,7 +300,7 @@
             // lblDriftEnd
             // 
             lblDriftEnd.AutoSize = true;
-            lblDriftEnd.Location = new Point(459, 174);
+            lblDriftEnd.Location = new Point(467, 174);
             lblDriftEnd.Name = "lblDriftEnd";
             lblDriftEnd.Size = new Size(227, 20);
             lblDriftEnd.TabIndex = 13;
@@ -280,6 +315,15 @@
             numDriftEnd.Size = new Size(120, 27);
             numDriftEnd.TabIndex = 14;
             numDriftEnd.Value = new decimal(new int[] { 3600, 0, 0, 0 });
+            // 
+            // chkFilterExceeded
+            // 
+            chkFilterExceeded.Location = new Point(155, 772);
+            chkFilterExceeded.Name = "chkFilterExceeded";
+            chkFilterExceeded.Size = new Size(342, 25);
+            chkFilterExceeded.TabIndex = 15;
+            chkFilterExceeded.Text = "Не сохранять значения СКО в документ";
+            chkFilterExceeded.UseVisualStyleBackColor = true;
             // 
             // tabDetectionLimit
             // 
@@ -362,7 +406,7 @@
             // 
             // btnSaveDetectionReport
             // 
-            btnSaveDetectionReport.Location = new Point(11, 738);
+            btnSaveDetectionReport.Location = new Point(11, 710);
             btnSaveDetectionReport.Name = "btnSaveDetectionReport";
             btnSaveDetectionReport.Size = new Size(137, 32);
             btnSaveDetectionReport.TabIndex = 0;
@@ -372,6 +416,16 @@
             // 
             // tabVirtualSamples
             // 
+            tabVirtualSamples.Controls.Add(label1);
+            tabVirtualSamples.Controls.Add(btnVirtualSamplesSelectFile);
+            tabVirtualSamples.Controls.Add(txtVirtualSamplesFilePath);
+            tabVirtualSamples.Controls.Add(btnVirtualSamplesAnalyze);
+            tabVirtualSamples.Controls.Add(txtVirtualSamplesResults);
+            tabVirtualSamples.Controls.Add(btnVirtualSamplesSave);
+            tabVirtualSamples.Controls.Add(lblCalibrationCoef);
+            tabVirtualSamples.Controls.Add(numCalibrationCoef);
+            tabVirtualSamples.Controls.Add(lblIntervalSize);
+            tabVirtualSamples.Controls.Add(numIntervalSize);
             tabVirtualSamples.Location = new Point(4, 29);
             tabVirtualSamples.Margin = new Padding(3, 4, 3, 4);
             tabVirtualSamples.Name = "tabVirtualSamples";
@@ -379,6 +433,102 @@
             tabVirtualSamples.TabIndex = 2;
             tabVirtualSamples.Text = "Предел детектирования по виртуальным пробам";
             tabVirtualSamples.UseVisualStyleBackColor = true;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new Point(10, 19);
+            label1.Name = "label1";
+            label1.Size = new Size(195, 20);
+            label1.TabIndex = 5;
+            label1.Text = "Выберите текстовый файл:";
+            // 
+            // btnVirtualSamplesSelectFile
+            // 
+            btnVirtualSamplesSelectFile.Location = new Point(493, 36);
+            btnVirtualSamplesSelectFile.Name = "btnVirtualSamplesSelectFile";
+            btnVirtualSamplesSelectFile.Size = new Size(120, 39);
+            btnVirtualSamplesSelectFile.TabIndex = 0;
+            btnVirtualSamplesSelectFile.Text = "Обзор...";
+            btnVirtualSamplesSelectFile.Click += btnVirtualSamplesSelectFile_Click;
+            // 
+            // txtVirtualSamplesFilePath
+            // 
+            txtVirtualSamplesFilePath.Location = new Point(10, 42);
+            txtVirtualSamplesFilePath.Name = "txtVirtualSamplesFilePath";
+            txtVirtualSamplesFilePath.ReadOnly = true;
+            txtVirtualSamplesFilePath.Size = new Size(477, 27);
+            txtVirtualSamplesFilePath.TabIndex = 1;
+            txtVirtualSamplesFilePath.TextChanged += txtVirtualSamplesFilePath_TextChanged;
+            // 
+            // btnVirtualSamplesAnalyze
+            // 
+            btnVirtualSamplesAnalyze.Enabled = false;
+            btnVirtualSamplesAnalyze.Location = new Point(10, 117);
+            btnVirtualSamplesAnalyze.Name = "btnVirtualSamplesAnalyze";
+            btnVirtualSamplesAnalyze.Size = new Size(132, 33);
+            btnVirtualSamplesAnalyze.TabIndex = 2;
+            btnVirtualSamplesAnalyze.Text = "Анализировать";
+            btnVirtualSamplesAnalyze.Click += btnVirtualSamplesAnalyze_Click;
+            // 
+            // txtVirtualSamplesResults
+            // 
+            txtVirtualSamplesResults.Location = new Point(10, 156);
+            txtVirtualSamplesResults.Multiline = true;
+            txtVirtualSamplesResults.Name = "txtVirtualSamplesResults";
+            txtVirtualSamplesResults.ReadOnly = true;
+            txtVirtualSamplesResults.ScrollBars = ScrollBars.Vertical;
+            txtVirtualSamplesResults.Size = new Size(660, 463);
+            txtVirtualSamplesResults.TabIndex = 3;
+            // 
+            // btnVirtualSamplesSave
+            // 
+            btnVirtualSamplesSave.Enabled = false;
+            btnVirtualSamplesSave.Location = new Point(10, 625);
+            btnVirtualSamplesSave.Name = "btnVirtualSamplesSave";
+            btnVirtualSamplesSave.Size = new Size(143, 33);
+            btnVirtualSamplesSave.TabIndex = 4;
+            btnVirtualSamplesSave.Text = "Сохранить отчет";
+            btnVirtualSamplesSave.Click += btnVirtualSamplesSave_Click;
+            // 
+            // lblCalibrationCoef
+            // 
+            lblCalibrationCoef.AutoSize = true;
+            lblCalibrationCoef.Location = new Point(10, 84);
+            lblCalibrationCoef.Name = "lblCalibrationCoef";
+            lblCalibrationCoef.Size = new Size(224, 20);
+            lblCalibrationCoef.TabIndex = 6;
+            lblCalibrationCoef.Text = "Калибровочный коэффициент:";
+            // 
+            // numCalibrationCoef
+            // 
+            numCalibrationCoef.DecimalPlaces = 1;
+            numCalibrationCoef.Location = new Point(240, 84);
+            numCalibrationCoef.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
+            numCalibrationCoef.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numCalibrationCoef.Name = "numCalibrationCoef";
+            numCalibrationCoef.Size = new Size(80, 27);
+            numCalibrationCoef.TabIndex = 7;
+            numCalibrationCoef.Value = new decimal(new int[] { 100, 0, 0, 0 });
+            // 
+            // lblIntervalSize
+            // 
+            lblIntervalSize.AutoSize = true;
+            lblIntervalSize.Location = new Point(347, 86);
+            lblIntervalSize.Name = "lblIntervalSize";
+            lblIntervalSize.Size = new Size(140, 20);
+            lblIntervalSize.TabIndex = 8;
+            lblIntervalSize.Text = "Размер интервала:";
+            // 
+            // numIntervalSize
+            // 
+            numIntervalSize.Location = new Point(493, 86);
+            numIntervalSize.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            numIntervalSize.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numIntervalSize.Name = "numIntervalSize";
+            numIntervalSize.Size = new Size(60, 27);
+            numIntervalSize.TabIndex = 9;
+            numIntervalSize.Value = new decimal(new int[] { 60, 0, 0, 0 });
             // 
             // openFileDialog1
             // 
@@ -403,9 +553,15 @@
             ((System.ComponentModel.ISupportInitialize)numDriftEnd).EndInit();
             tabDetectionLimit.ResumeLayout(false);
             tabDetectionLimit.PerformLayout();
+            tabVirtualSamples.ResumeLayout(false);
+            tabVirtualSamples.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numCalibrationCoef).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numIntervalSize).EndInit();
             ResumeLayout(false);
         }
 
         #endregion
+
+        private Label label1;
     }
 }

@@ -6,6 +6,36 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>DALL·E-2025-04-02-18.48.55-A-modern_-sleek-icon-for-a-scientific-signal-analysis-application.ico</ApplicationIcon>
+    <PackageIcon>DALL·E 2025-04-02 18.48.55 - A modern, sleek icon for a scientific signal analysis application. The design features a dark background with a glowing blue waveform graph at the cen.webp</PackageIcon>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnableNETAnalyzers>True</EnableNETAnalyzers>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="DALL·E-2025-04-02-18.48.55-A-modern_-sleek-icon-for-a-scientific-signal-analysis-application.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="D:\Downloads\DALL·E 2025-04-02 18.48.55 - A modern, sleek icon for a scientific signal analysis application. The design features a dark background with a glowing blue waveform graph at the cen.webp">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
 
 </Project>

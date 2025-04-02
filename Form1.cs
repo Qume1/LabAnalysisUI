@@ -12,6 +12,8 @@ namespace LabAnalysisUI
         private bool isExceededValuesVisible = false; // Changed initial state to false
         private string detectionLimitFilePath;
         private FileAnalyzer.DetectionLimitResult currentDetectionLimitResult;
+        private string virtualSamplesFilePath;
+        private FileAnalyzer.VirtualSamplesResult currentVirtualSamplesResult;
 
         public Form1()
         {
@@ -25,6 +27,8 @@ namespace LabAnalysisUI
             selectedFilePath = string.Empty;
             detectionLimitFilePath = string.Empty;
             currentDetectionLimitResult = null;
+            virtualSamplesFilePath = string.Empty;
+            currentVirtualSamplesResult = null;
             UpdateShowExceededButtonText(); // Add initial button text setup
             btnSaveDetectionReport.Enabled = false;  // Add this line
         }
@@ -90,26 +94,43 @@ namespace LabAnalysisUI
 
         private void btnSaveOutput_Click(object sender, EventArgs e)
         {
-            if (currentResult == null || !currentResult.IsSuccess)
-                return;
-
-            var saveFileDialog = new SaveFileDialog
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
             {
-                Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*",
-                Title = "Сохранить результаты анализа",
-                DefaultExt = "txt"
-            };
+                saveFileDialog.Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*";
+                saveFileDialog.Title = "Сохранить отчет";
 
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                try
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    fileAnalyzer.SaveResultsToFile(currentResult, saveFileDialog.FileName);
-                    MessageBox.Show("Результаты успешно сохранены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    string textToSave = txtResults.Text;
+
+                    // If checkbox is checked, filter the results
+                    if (chkFilterExceeded.Checked)
+                    {
+                        var lines = txtResults.Lines;
+                        var filteredLines = new List<string>();
+                        decimal threshold = numMinStdDev.Value;
+
+                        foreach (var line in lines)
+                        {
+                            // Add headers and non-data lines
+                            if (!line.Contains("СКО:") || !decimal.TryParse(line.Split(':')[1].Trim(), out decimal sko))
+                            {
+                                filteredLines.Add(line);
+                                continue;
+                            }
+
+                            // Only add lines where СКО is within threshold
+                            if (sko <= threshold)
+                            {
+                                filteredLines.Add(line);
+                            }
+                        }
+
+                        textToSave = string.Join(Environment.NewLine, filteredLines);
+                    }
+
+                    File.WriteAllText(saveFileDialog.FileName, textToSave);
+                    MessageBox.Show("Отчет сохранен успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
         }
@@ -273,6 +294,97 @@ namespace LabAnalysisUI
                     }
                 }
             }
+        }
+
+        private void btnVirtualSamplesSelectFile_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                virtualSamplesFilePath = openFileDialog1.FileName;
+                txtVirtualSamplesFilePath.Text = virtualSamplesFilePath;
+                btnVirtualSamplesAnalyze.Enabled = true;
+                btnVirtualSamplesSave.Enabled = false;
+            }
+        }
+
+        private async void btnVirtualSamplesAnalyze_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(virtualSamplesFilePath))
+            {
+                MessageBox.Show("Выберите файл для анализа", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                btnVirtualSamplesAnalyze.Enabled = false;
+                Cursor = Cursors.WaitCursor;
+                txtVirtualSamplesResults.Clear();
+
+                double calibrationCoef = (double)numCalibrationCoef.Value;
+                int intervalSize = (int)numIntervalSize.Value;
+
+                currentVirtualSamplesResult = await Task.Run(() =>
+                    fileAnalyzer.AnalyzeVirtualSamples(virtualSamplesFilePath, calibrationCoef, intervalSize));
+
+                if (currentVirtualSamplesResult.IsSuccess)
+                {
+                    foreach (var message in currentVirtualSamplesResult.Messages)
+                    {
+                        txtVirtualSamplesResults.AppendText(message + Environment.NewLine);
+                    }
+                    btnVirtualSamplesSave.Enabled = true;
+                }
+                else
+                {
+                    MessageBox.Show("Ошибка при анализе файла", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при анализе файла: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnVirtualSamplesAnalyze.Enabled = true;
+                Cursor = Cursors.Default;
+            }
+        }
+
+        private void btnVirtualSamplesSave_Click(object sender, EventArgs e)
+        {
+            if (currentVirtualSamplesResult == null || !currentVirtualSamplesResult.IsSuccess)
+                return;
+
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*",
+                Title = "Сохранить результаты анализа",
+                DefaultExt = "txt"
+            };
+
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    fileAnalyzer.SaveVirtualSamplesResults(currentVirtualSamplesResult, saveFileDialog.FileName);
+                    MessageBox.Show("Результаты успешно сохранены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void txtVirtualSamplesFilePath_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblMinStdDev_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

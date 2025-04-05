@@ -31,7 +31,7 @@
         private System.Windows.Forms.Button btnDetectionLimitSelectFile;
         private System.Windows.Forms.TextBox txtDetectionLimitFilePath;
         private System.Windows.Forms.Label lblDetectionLimitFile;
-        private System.Windows.Forms.TextBox txtDetectionLimitResults;
+        private System.Windows.Forms.RichTextBox txtDetectionLimitResults;
         private System.Windows.Forms.Button btnDetectionLimitAnalyze;
         private System.Windows.Forms.Button btnDetectionLimitSave;
         private System.Windows.Forms.Button btnSaveDetectionReport;
@@ -40,7 +40,7 @@
         private System.Windows.Forms.Button btnVirtualSamplesSelectFile;
         private System.Windows.Forms.TextBox txtVirtualSamplesFilePath;
         private System.Windows.Forms.Button btnVirtualSamplesAnalyze;
-        private System.Windows.Forms.TextBox txtVirtualSamplesResults;
+        private System.Windows.Forms.RichTextBox txtVirtualSamplesResults;
         private System.Windows.Forms.Button btnVirtualSamplesSave;
 
         // New components for Virtual Samples tab
@@ -105,7 +105,7 @@
             lblDetectionLimitFile = new Label();
             txtDetectionLimitFilePath = new TextBox();
             btnDetectionLimitSelectFile = new Button();
-            txtDetectionLimitResults = new TextBox();
+            txtDetectionLimitResults = new RichTextBox();
             btnDetectionLimitAnalyze = new Button();
             btnDetectionLimitSave = new Button();
             btnSaveDetectionReport = new Button();
@@ -115,7 +115,7 @@
             btnVirtualSamplesSelectFile = new Button();
             txtVirtualSamplesFilePath = new TextBox();
             btnVirtualSamplesAnalyze = new Button();
-            txtVirtualSamplesResults = new TextBox();
+            txtVirtualSamplesResults = new RichTextBox();
             btnVirtualSamplesSave = new Button();
             lblCalibrationCoef = new Label();
             numCalibrationCoef = new NumericUpDown();
@@ -304,6 +304,8 @@
             txtResults.ScrollBars = RichTextBoxScrollBars.Vertical;
             txtResults.Size = new Size(902, 532);
             txtResults.TabIndex = 10;
+            txtResults.HideSelection = false;
+            txtResults.WordWrap = true;
             // 
             // lblDriftStart
             // 
@@ -409,9 +411,11 @@
             txtDetectionLimitResults.Multiline = true;
             txtDetectionLimitResults.Name = "txtDetectionLimitResults";
             txtDetectionLimitResults.ReadOnly = true;
-            txtDetectionLimitResults.ScrollBars = ScrollBars.Vertical;
+            txtDetectionLimitResults.ScrollBars = RichTextBoxScrollBars.Vertical;
             txtDetectionLimitResults.Size = new Size(902, 532);
             txtDetectionLimitResults.TabIndex = 3;
+            txtDetectionLimitResults.HideSelection = false;
+            txtDetectionLimitResults.WordWrap = true;
             // 
             // btnDetectionLimitAnalyze
             // 
@@ -522,12 +526,14 @@
             // txtVirtualSamplesResults
             // 
             txtVirtualSamplesResults.Location = new Point(10, 156);
+            txtVirtualSamplesResults.Size = new Size(902, 532);
             txtVirtualSamplesResults.Multiline = true;
-            txtVirtualSamplesResults.Name = "txtVirtualSamplesResults";
             txtVirtualSamplesResults.ReadOnly = true;
-            txtVirtualSamplesResults.ScrollBars = ScrollBars.Vertical;
-            txtVirtualSamplesResults.Size = new Size(660, 463);
+            txtVirtualSamplesResults.ScrollBars = RichTextBoxScrollBars.Vertical;
+            txtVirtualSamplesResults.Name = "txtVirtualSamplesResults";
             txtVirtualSamplesResults.TabIndex = 3;
+            txtVirtualSamplesResults.HideSelection = false;
+            txtVirtualSamplesResults.WordWrap = true;
             // 
             // btnVirtualSamplesSave
             // 

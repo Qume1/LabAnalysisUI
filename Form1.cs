@@ -192,59 +192,20 @@ namespace LabAnalysisUI
 
             txtResults.Clear();
 
-            // Process general stats with color coding for drift value
+            // Show general stats
             foreach (var message in currentResult.GeneralStats)
             {
-                if (message.StartsWith("Значение дрейфа:"))
-                {
-                    // Parse the drift value from the message
-                    string[] parts = message.Split(':');
-                    if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
-                    {
-                        txtResults.AppendText("Значение дрейфа: ");
-                        
-                        // Store the current position to insert the colored value
-                        int startPos = txtResults.TextLength;
-                        txtResults.AppendText($"{driftValue:F2}");
-                        int endPos = txtResults.TextLength;
-
-                        // Select the drift value text
-                        txtResults.Select(startPos, endPos - startPos);
-
-                        // Apply color based on threshold
-                        if (driftValue > 30)
-                        {
-                            txtResults.SelectionColor = Color.Red;
-                        }
-                        else if (driftValue > 25)
-                        {
-                            txtResults.SelectionColor = Color.Orange;
-                        }
-
-                        // Reset selection and color
-                        txtResults.SelectionStart = txtResults.TextLength;
-                        txtResults.SelectionColor = txtResults.ForeColor;
-                        txtResults.AppendText(Environment.NewLine);
-                    }
-                    else
-                    {
-                        txtResults.AppendText(message + Environment.NewLine);
-                    }
-                }
-                else
-                {
-                    txtResults.AppendText(message + Environment.NewLine);
-                }
+                AppendTextWithScroll(txtResults, message, true);
             }
 
             // Show exceeded values if enabled
             if (showExceededValues && currentResult.ExceededValues.Any())
             {
-                txtResults.AppendText(Environment.NewLine);
-                txtResults.AppendText($"Значения СКО, превышающие {currentResult.UsedThreshold:F2}:" + Environment.NewLine);
+                AppendTextWithScroll(txtResults, "");
+                AppendTextWithScroll(txtResults, $"Значения СКО, превышающие {currentResult.UsedThreshold:F2}:");
                 foreach (var value in currentResult.ExceededValues)
                 {
-                    txtResults.AppendText(value + Environment.NewLine);
+                    AppendTextWithScroll(txtResults, value);
                 }
             }
         }
@@ -280,10 +241,10 @@ namespace LabAnalysisUI
                 {
                     foreach (var message in currentDetectionLimitResult.Messages)
                     {
-                        txtDetectionLimitResults.AppendText(message + Environment.NewLine);
+                        AppendTextWithScroll(txtDetectionLimitResults, message, true);
                     }
                     btnDetectionLimitSave.Enabled = true;
-                    btnSaveDetectionReport.Enabled = true;  // Add this line
+                    btnSaveDetectionReport.Enabled = true;
                 }
                 else
                 {
@@ -389,7 +350,7 @@ namespace LabAnalysisUI
                 {
                     foreach (var message in currentVirtualSamplesResult.Messages)
                     {
-                        txtVirtualSamplesResults.AppendText(message + Environment.NewLine);
+                        AppendTextWithScroll(txtVirtualSamplesResults, message, true);
                     }
                     btnVirtualSamplesSave.Enabled = true;
                 }
@@ -616,6 +577,90 @@ namespace LabAnalysisUI
                 return lblNotificationVirtualSamples;
             else
                 return lblNotification;
+        }
+
+        // Add this helper method to standardize text coloring behavior
+        private void AppendColoredText(RichTextBox rtb, string message)
+        {
+            if (message.StartsWith("Значение дрейфа:"))
+            {
+                string[] parts = message.Split(':');
+                if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
+                {
+                    rtb.AppendText("Значение дрейфа: ");
+                    int startPos = rtb.TextLength;
+                    rtb.AppendText($"{driftValue:F2}");
+                    int endPos = rtb.TextLength;
+                    
+                    rtb.Select(startPos, endPos - startPos);
+                    if (driftValue > 30)
+                    {
+                        rtb.SelectionColor = Color.Red;
+                    }
+                    else if (driftValue > 25)
+                    {
+                        rtb.SelectionColor = Color.Orange;
+                    }
+                    rtb.SelectionColor = rtb.ForeColor;
+                    rtb.AppendText(Environment.NewLine);
+                }
+                else
+                {
+                    rtb.AppendText(message + Environment.NewLine);
+                }
+            }
+            else
+            {
+                rtb.AppendText(message + Environment.NewLine);
+            }
+        }
+
+        // Add this helper method right after the other helper methods in the Form1 class
+        private void AppendTextWithScroll(RichTextBox rtb, string text, bool colorFormat = false)
+        {
+            if (colorFormat && text.StartsWith("Значение дрейфа:"))
+            {
+                string[] parts = text.Split(':');
+                if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
+                {
+                    rtb.AppendText("Значение дрейфа: ");
+                    
+                    // Store current position for coloring
+                    int startPos = rtb.TextLength;
+                    rtb.AppendText($"{driftValue:F2}");
+                    int endPos = rtb.TextLength;
+                    
+                    // Select the numeric part
+                    rtb.Select(startPos, endPos - startPos);
+                    
+                    // Apply color based on value
+                    if (driftValue > 30)
+                    {
+                        rtb.SelectionColor = Color.Red;
+                    }
+                    else if (driftValue > 25)
+                    {
+                        rtb.SelectionColor = Color.Orange;
+                    }
+                    
+                    // Reset selection and color
+                    rtb.SelectionStart = rtb.TextLength;
+                    rtb.SelectionColor = rtb.ForeColor;
+                    rtb.AppendText(Environment.NewLine);
+                }
+                else
+                {
+                    rtb.AppendText(text + Environment.NewLine);
+                }
+            }
+            else
+            {
+                rtb.AppendText(text + Environment.NewLine);
+            }
+            
+            // Ensure scroll to latest text
+            rtb.SelectionStart = rtb.TextLength;
+            rtb.ScrollToCaret();
         }
     }
 }

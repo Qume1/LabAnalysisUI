@@ -93,6 +93,14 @@ namespace LabAnalysisUI
                     driftStart,   // Pass driftStart for drift calculation
                     driftEnd));   // Pass driftEnd for drift calculation
 
+                if (!currentResult.IsSuccess)
+                {
+                    // Display the specific error message from the analyzer
+                    MessageBox.Show(currentResult.Messages.FirstOrDefault() ?? "Ошибка при анализе файла", 
+                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 isExceededValuesVisible = false; // Reset to hidden state after new analysis
                 DisplayResults(false); // Initially display without exceeded values
 

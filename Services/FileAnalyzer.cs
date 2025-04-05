@@ -221,9 +221,9 @@ namespace LabAnalysisUI.Services
             try
             {
                 var lines = File.ReadAllLines(filePath).ToList();
-                if (lines.Count < 1800)
+                if (lines.Count < 3600) // Changed from 1800 to 3600
                 {
-                    result.Messages.Add("Файл содержит менее 1800 строк. Недостаточно данных для обработки.");
+                    result.Messages.Add("Недостаточно данных"); // Changed error message
                     result.IsSuccess = false;
                     return new List<Measurement>();
                 }

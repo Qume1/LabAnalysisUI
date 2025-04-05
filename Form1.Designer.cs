@@ -16,7 +16,7 @@
         private System.Windows.Forms.NumericUpDown numMinStdDev;
         private System.Windows.Forms.NumericUpDown numStartSeconds;
         private System.Windows.Forms.Button btnAnalyze;
-        private System.Windows.Forms.TextBox txtResults;
+        private System.Windows.Forms.RichTextBox txtResults;
         private System.Windows.Forms.Label lblMinStdDev;
         private System.Windows.Forms.Label lblStartSeconds;
         private System.Windows.Forms.Button btnSaveOutput;
@@ -52,6 +52,10 @@
 
         // New component for notification
         private System.Windows.Forms.Label lblNotification;
+
+        // New components for notification in Detection Limit and Virtual Samples tabs
+        private System.Windows.Forms.Label lblNotificationDetectionLimit;
+        private System.Windows.Forms.Label lblNotificationVirtualSamples;
 
         /// <summary>
         ///  Clean up any resources being used.
@@ -91,7 +95,7 @@
             btnAnalyze = new Button();
             btnSaveOutput = new Button();
             btnShowExceeded = new Button();
-            txtResults = new TextBox();
+            txtResults = new RichTextBox();
             lblDriftStart = new Label();
             numDriftStart = new NumericUpDown();
             lblDriftEnd = new Label();
@@ -105,6 +109,7 @@
             btnDetectionLimitAnalyze = new Button();
             btnDetectionLimitSave = new Button();
             btnSaveDetectionReport = new Button();
+            lblNotificationDetectionLimit = new Label();
             tabVirtualSamples = new TabPage();
             label1 = new Label();
             btnVirtualSamplesSelectFile = new Button();
@@ -116,6 +121,7 @@
             numCalibrationCoef = new NumericUpDown();
             lblIntervalSize = new Label();
             numIntervalSize = new NumericUpDown();
+            lblNotificationVirtualSamples = new Label();
             openFileDialog1 = new OpenFileDialog();
             tabControl1.SuspendLayout();
             tabRSD.SuspendLayout();
@@ -175,7 +181,7 @@
             lblNotification.BackColor = Color.LightYellow;
             lblNotification.Font = new Font("Segoe UI", 8F);
             lblNotification.ForeColor = Color.Black;
-            lblNotification.Location = new Point(212, 29);
+            lblNotification.Location = new Point(212, 27);
             lblNotification.Name = "lblNotification";
             lblNotification.Size = new Size(179, 19);
             lblNotification.TabIndex = 999;
@@ -295,7 +301,7 @@
             txtResults.Multiline = true;
             txtResults.Name = "txtResults";
             txtResults.ReadOnly = true;
-            txtResults.ScrollBars = ScrollBars.Vertical;
+            txtResults.ScrollBars = RichTextBoxScrollBars.Vertical;
             txtResults.Size = new Size(902, 532);
             txtResults.TabIndex = 10;
             // 
@@ -355,6 +361,7 @@
             tabDetectionLimit.Controls.Add(btnDetectionLimitAnalyze);
             tabDetectionLimit.Controls.Add(btnDetectionLimitSave);
             tabDetectionLimit.Controls.Add(btnSaveDetectionReport);
+            tabDetectionLimit.Controls.Add(lblNotificationDetectionLimit);
             tabDetectionLimit.Location = new Point(4, 29);
             tabDetectionLimit.Margin = new Padding(3, 4, 3, 4);
             tabDetectionLimit.Name = "tabDetectionLimit";
@@ -438,6 +445,19 @@
             btnSaveDetectionReport.UseVisualStyleBackColor = true;
             btnSaveDetectionReport.Click += btnSaveDetectionReport_Click;
             // 
+            // lblNotificationDetectionLimit
+            // 
+            lblNotificationDetectionLimit.AutoSize = true;
+            lblNotificationDetectionLimit.BackColor = Color.LightYellow;
+            lblNotificationDetectionLimit.Font = new Font("Segoe UI", 8F);
+            lblNotificationDetectionLimit.ForeColor = Color.Black;
+            lblNotificationDetectionLimit.Location = new Point(212, 27);
+            lblNotificationDetectionLimit.Name = "lblNotificationDetectionLimit";
+            lblNotificationDetectionLimit.Size = new Size(179, 19);
+            lblNotificationDetectionLimit.TabIndex = 999;
+            lblNotificationDetectionLimit.Text = "Файл успешно скопирован";
+            lblNotificationDetectionLimit.Visible = false;
+            // 
             // tabVirtualSamples
             // 
             tabVirtualSamples.Controls.Add(label1);
@@ -450,6 +470,7 @@
             tabVirtualSamples.Controls.Add(numCalibrationCoef);
             tabVirtualSamples.Controls.Add(lblIntervalSize);
             tabVirtualSamples.Controls.Add(numIntervalSize);
+            tabVirtualSamples.Controls.Add(lblNotificationVirtualSamples);
             tabVirtualSamples.Location = new Point(4, 29);
             tabVirtualSamples.Margin = new Padding(3, 4, 3, 4);
             tabVirtualSamples.Name = "tabVirtualSamples";
@@ -556,6 +577,19 @@
             numIntervalSize.Size = new Size(60, 27);
             numIntervalSize.TabIndex = 9;
             numIntervalSize.Value = new decimal(new int[] { 60, 0, 0, 0 });
+            // 
+            // lblNotificationVirtualSamples
+            // 
+            lblNotificationVirtualSamples.AutoSize = true;
+            lblNotificationVirtualSamples.BackColor = Color.LightYellow;
+            lblNotificationVirtualSamples.Font = new Font("Segoe UI", 8F);
+            lblNotificationVirtualSamples.ForeColor = Color.Black;
+            lblNotificationVirtualSamples.Location = new Point(211, 19);
+            lblNotificationVirtualSamples.Name = "lblNotificationVirtualSamples";
+            lblNotificationVirtualSamples.Size = new Size(179, 19);
+            lblNotificationVirtualSamples.TabIndex = 999;
+            lblNotificationVirtualSamples.Text = "Файл успешно скопирован";
+            lblNotificationVirtualSamples.Visible = false;
             // 
             // openFileDialog1
             // 

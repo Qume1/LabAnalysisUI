@@ -24,6 +24,7 @@ namespace LabAnalysisUI
         private int pauseTicks = 0;
         private Timer fadeTimer;
         private Color notificationOriginalColor = System.Drawing.Color.Black; // Original notification text color
+        private Label currentNotificationLabel;
 
         public Form1()
         {
@@ -191,13 +192,52 @@ namespace LabAnalysisUI
 
             txtResults.Clear();
 
-            // Показываем общую статистику всегда
+            // Process general stats with color coding for drift value
             foreach (var message in currentResult.GeneralStats)
             {
-                txtResults.AppendText(message + Environment.NewLine);
+                if (message.StartsWith("Значение дрейфа:"))
+                {
+                    // Parse the drift value from the message
+                    string[] parts = message.Split(':');
+                    if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
+                    {
+                        txtResults.AppendText("Значение дрейфа: ");
+                        
+                        // Store the current position to insert the colored value
+                        int startPos = txtResults.TextLength;
+                        txtResults.AppendText($"{driftValue:F2}");
+                        int endPos = txtResults.TextLength;
+
+                        // Select the drift value text
+                        txtResults.Select(startPos, endPos - startPos);
+
+                        // Apply color based on threshold
+                        if (driftValue > 30)
+                        {
+                            txtResults.SelectionColor = Color.Red;
+                        }
+                        else if (driftValue > 25)
+                        {
+                            txtResults.SelectionColor = Color.Orange;
+                        }
+
+                        // Reset selection and color
+                        txtResults.SelectionStart = txtResults.TextLength;
+                        txtResults.SelectionColor = txtResults.ForeColor;
+                        txtResults.AppendText(Environment.NewLine);
+                    }
+                    else
+                    {
+                        txtResults.AppendText(message + Environment.NewLine);
+                    }
+                }
+                else
+                {
+                    txtResults.AppendText(message + Environment.NewLine);
+                }
             }
 
-            // Показываем превышения только если они включены
+            // Show exceeded values if enabled
             if (showExceededValues && currentResult.ExceededValues.Any())
             {
                 txtResults.AppendText(Environment.NewLine);
@@ -519,7 +559,10 @@ namespace LabAnalysisUI
 
         private void StartNotification()
         {
-            lblNotification.Visible = true;
+            currentNotificationLabel = GetNotificationLabel();
+            if (currentNotificationLabel == null)
+                return;
+            currentNotificationLabel.Visible = true;
             notificationAlpha = 0;
             notificationState = NotificationState.FadeIn;
             pauseTicks = 0;
@@ -528,7 +571,7 @@ namespace LabAnalysisUI
 
         private void FadeTimer_Tick(object sender, EventArgs e)
         {
-            const int step = 15; // Increment/decrement value for alpha
+            const int step = 15; // alpha increment/decrement
             switch (notificationState)
             {
                 case NotificationState.FadeIn:
@@ -541,7 +584,7 @@ namespace LabAnalysisUI
                     break;
                 case NotificationState.Pause:
                     pauseTicks++;
-                    if (pauseTicks >= 40) // Approximately 2000ms pause (40*50ms)
+                    if (pauseTicks >= 40) // approx 2000ms pause (40*50ms)
                     {
                         notificationState = NotificationState.FadeOut;
                     }
@@ -552,14 +595,27 @@ namespace LabAnalysisUI
                     {
                         notificationAlpha = 0;
                         notificationState = NotificationState.Off;
-                        lblNotification.Visible = false;
+                        if(currentNotificationLabel != null)
+                            currentNotificationLabel.Visible = false;
                         fadeTimer.Stop();
+                        return;
                     }
                     break;
             }
-            lblNotification.ForeColor = System.Drawing.Color.FromArgb(notificationAlpha, notificationOriginalColor);
+            if(currentNotificationLabel != null)
+                currentNotificationLabel.ForeColor = System.Drawing.Color.FromArgb(notificationAlpha, notificationOriginalColor);
         }
 
-        
+        private Label GetNotificationLabel()
+        {
+            if (tabControl1.SelectedTab == tabRSD)
+                return lblNotification;
+            else if (tabControl1.SelectedTab == tabDetectionLimit)
+                return lblNotificationDetectionLimit;
+            else if (tabControl1.SelectedTab == tabVirtualSamples)
+                return lblNotificationVirtualSamples;
+            else
+                return lblNotification;
+        }
     }
 }

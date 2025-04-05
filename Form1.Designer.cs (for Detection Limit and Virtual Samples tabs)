@@ -1,0 +1,6 @@
+// Similarly, update the notification labels for the other two tabs so they do not cover tab titles.
+// Example for the Detection Limit tab:
+lblNotificationDetectionLimit.Location = new System.Drawing.Point(900, 900);  // Adjust as needed
+
+// And for the Virtual Samples tab:
+lblNotificationVirtualSamples.Location = new System.Drawing.Point(900, 900); // Adjust as needed

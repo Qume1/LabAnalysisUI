@@ -1,6 +1,9 @@
 using LabAnalysisUI.Services;
 using System.Windows.Forms;
 using System.Diagnostics;
+using System.IO;
+using Timer = System.Windows.Forms.Timer; // ƒобавлено дл€ устранени€ неоднозначности
+
 
 namespace LabAnalysisUI
 {
@@ -14,11 +17,26 @@ namespace LabAnalysisUI
         private FileAnalyzer.DetectionLimitResult currentDetectionLimitResult;
         private string virtualSamplesFilePath;
         private FileAnalyzer.VirtualSamplesResult currentVirtualSamplesResult;
+        private Timer notificationTimer;
+        private enum NotificationState { FadeIn, Pause, FadeOut, Off }
+        private NotificationState notificationState = NotificationState.Off;
+        private int notificationAlpha = 0;
+        private int pauseTicks = 0;
+        private Timer fadeTimer;
+        private Color notificationOriginalColor = System.Drawing.Color.Black; // Original notification text color
 
         public Form1()
         {
             InitializeComponent();
+            this.KeyPreview = true;                     // Added line to capture key events
+            this.KeyDown += new KeyEventHandler(Form1_KeyDown); // Added line for key event
             fileAnalyzer = new FileAnalyzer();
+            notificationTimer = new Timer();
+            notificationTimer.Interval = 3000; // 3 seconds
+            notificationTimer.Tick += NotificationTimer_Tick;
+            fadeTimer = new Timer();
+            fadeTimer.Interval = 50; // 50 ms per tick for smooth animation
+            fadeTimer.Tick += FadeTimer_Tick;
             SetupForm();
         }
 
@@ -386,5 +404,162 @@ namespace LabAnalysisUI
         {
 
         }
+
+        // Common DragEnter event handler
+        private void fileTextBox_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        // Common DragDrop event handler
+        private void fileTextBox_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files.Length > 0 && File.Exists(files[0]))
+            {
+                TextBox targetTextBox = sender as TextBox;
+                targetTextBox.Text = files[0];
+
+                // Enable corresponding analysis button based on TextBox
+                if (targetTextBox == txtFilePath)
+                {
+                    btnAnalyze.Enabled = true;
+                }
+                else if (targetTextBox == txtDetectionLimitFilePath)
+                {
+                    btnDetectionLimitAnalyze.Enabled = true;
+                }
+                else if (targetTextBox == txtVirtualSamplesFilePath)
+                {
+                    btnVirtualSamplesAnalyze.Enabled = true;
+                }
+            }
+        }
+
+        // New event handler for DragEnter on the form
+        private void Form1_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        // New event handler for DragDrop on the form
+        private void Form1_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files.Length == 0 || !File.Exists(files[0])) return;
+
+            // Determine the active tab and update the corresponding TextBox and file path
+            var activeTab = tabControl1.SelectedTab;
+            if (activeTab == tabRSD)
+            {
+                selectedFilePath = files[0];
+                txtFilePath.Text = selectedFilePath;
+                btnAnalyze.Enabled = true;
+            }
+            else if (activeTab == tabDetectionLimit)
+            {
+                detectionLimitFilePath = files[0];
+                txtDetectionLimitFilePath.Text = detectionLimitFilePath;
+                btnDetectionLimitAnalyze.Enabled = true;
+                btnSaveDetectionReport.Enabled = false;
+            }
+            else if (activeTab == tabVirtualSamples)
+            {
+                virtualSamplesFilePath = files[0];
+                txtVirtualSamplesFilePath.Text = virtualSamplesFilePath;
+                btnVirtualSamplesAnalyze.Enabled = true;
+            }
+
+            // Display success message after a valid file drop
+            StartNotification();
+        }
+
+        // New event handler for key down events
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                // Determine active tab and trigger corresponding Analyze button if enabled
+                if (tabControl1.SelectedTab == tabRSD && btnAnalyze.Enabled)
+                {
+                    btnAnalyze.PerformClick();
+                }
+                else if (tabControl1.SelectedTab == tabDetectionLimit && btnDetectionLimitAnalyze.Enabled)
+                {
+                    btnDetectionLimitAnalyze.PerformClick();
+                }
+                else if (tabControl1.SelectedTab == tabVirtualSamples && btnVirtualSamplesAnalyze.Enabled)
+                {
+                    btnVirtualSamplesAnalyze.PerformClick();
+                }
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void NotificationTimer_Tick(object sender, EventArgs e)
+        {
+            lblNotification.Visible = false;
+            notificationTimer.Stop();
+        }
+
+        private void StartNotification()
+        {
+            lblNotification.Visible = true;
+            notificationAlpha = 0;
+            notificationState = NotificationState.FadeIn;
+            pauseTicks = 0;
+            fadeTimer.Start();
+        }
+
+        private void FadeTimer_Tick(object sender, EventArgs e)
+        {
+            const int step = 15; // Increment/decrement value for alpha
+            switch (notificationState)
+            {
+                case NotificationState.FadeIn:
+                    notificationAlpha += step;
+                    if (notificationAlpha >= 255)
+                    {
+                        notificationAlpha = 255;
+                        notificationState = NotificationState.Pause;
+                    }
+                    break;
+                case NotificationState.Pause:
+                    pauseTicks++;
+                    if (pauseTicks >= 40) // Approximately 2000ms pause (40*50ms)
+                    {
+                        notificationState = NotificationState.FadeOut;
+                    }
+                    break;
+                case NotificationState.FadeOut:
+                    notificationAlpha -= step;
+                    if (notificationAlpha <= 0)
+                    {
+                        notificationAlpha = 0;
+                        notificationState = NotificationState.Off;
+                        lblNotification.Visible = false;
+                        fadeTimer.Stop();
+                    }
+                    break;
+            }
+            lblNotification.ForeColor = System.Drawing.Color.FromArgb(notificationAlpha, notificationOriginalColor);
+        }
+
+        
     }
 }

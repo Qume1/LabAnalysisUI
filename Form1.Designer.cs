@@ -50,6 +50,9 @@
         private System.Windows.Forms.Label lblCalibrationCoef;
         private System.Windows.Forms.Label lblIntervalSize;
 
+        // New component for notification
+        private System.Windows.Forms.Label lblNotification;
+
         /// <summary>
         ///  Clean up any resources being used.
         /// </summary>
@@ -77,6 +80,7 @@
         {
             tabControl1 = new TabControl();
             tabRSD = new TabPage();
+            lblNotification = new Label();
             lblFileSelect = new Label();
             txtFilePath = new TextBox();
             btnSelectFile = new Button();
@@ -140,6 +144,7 @@
             // 
             // tabRSD
             // 
+            tabRSD.Controls.Add(lblNotification);
             tabRSD.Controls.Add(lblFileSelect);
             tabRSD.Controls.Add(txtFilePath);
             tabRSD.Controls.Add(btnSelectFile);
@@ -164,6 +169,19 @@
             tabRSD.Text = "Расчет СКО и дрейфа";
             tabRSD.UseVisualStyleBackColor = true;
             // 
+            // lblNotification
+            // 
+            lblNotification.AutoSize = true;
+            lblNotification.BackColor = Color.LightYellow;
+            lblNotification.Font = new Font("Segoe UI", 8F);
+            lblNotification.ForeColor = Color.Black;
+            lblNotification.Location = new Point(212, 29);
+            lblNotification.Name = "lblNotification";
+            lblNotification.Size = new Size(179, 19);
+            lblNotification.TabIndex = 999;
+            lblNotification.Text = "Файл успешно скопирован";
+            lblNotification.Visible = false;
+            // 
             // lblFileSelect
             // 
             lblFileSelect.AutoSize = true;
@@ -175,12 +193,15 @@
             // 
             // txtFilePath
             // 
+            txtFilePath.AllowDrop = true;
             txtFilePath.Location = new Point(11, 60);
             txtFilePath.Margin = new Padding(3, 4, 3, 4);
             txtFilePath.Name = "txtFilePath";
             txtFilePath.ReadOnly = true;
             txtFilePath.Size = new Size(457, 27);
             txtFilePath.TabIndex = 1;
+            txtFilePath.DragDrop += fileTextBox_DragDrop;
+            txtFilePath.DragEnter += fileTextBox_DragEnter;
             // 
             // btnSelectFile
             // 
@@ -353,12 +374,15 @@
             // 
             // txtDetectionLimitFilePath
             // 
+            txtDetectionLimitFilePath.AllowDrop = true;
             txtDetectionLimitFilePath.Location = new Point(11, 60);
             txtDetectionLimitFilePath.Margin = new Padding(3, 4, 3, 4);
             txtDetectionLimitFilePath.Name = "txtDetectionLimitFilePath";
             txtDetectionLimitFilePath.ReadOnly = true;
             txtDetectionLimitFilePath.Size = new Size(457, 27);
             txtDetectionLimitFilePath.TabIndex = 1;
+            txtDetectionLimitFilePath.DragDrop += fileTextBox_DragDrop;
+            txtDetectionLimitFilePath.DragEnter += fileTextBox_DragEnter;
             // 
             // btnDetectionLimitSelectFile
             // 
@@ -454,12 +478,15 @@
             // 
             // txtVirtualSamplesFilePath
             // 
+            txtVirtualSamplesFilePath.AllowDrop = true;
             txtVirtualSamplesFilePath.Location = new Point(10, 42);
             txtVirtualSamplesFilePath.Name = "txtVirtualSamplesFilePath";
             txtVirtualSamplesFilePath.ReadOnly = true;
             txtVirtualSamplesFilePath.Size = new Size(477, 27);
             txtVirtualSamplesFilePath.TabIndex = 1;
             txtVirtualSamplesFilePath.TextChanged += txtVirtualSamplesFilePath_TextChanged;
+            txtVirtualSamplesFilePath.DragDrop += fileTextBox_DragDrop;
+            txtVirtualSamplesFilePath.DragEnter += fileTextBox_DragEnter;
             // 
             // btnVirtualSamplesAnalyze
             // 
@@ -537,6 +564,7 @@
             // 
             // Form1
             // 
+            AllowDrop = true;
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1170, 1024);
@@ -544,6 +572,8 @@
             Margin = new Padding(3, 4, 3, 4);
             Name = "Form1";
             Text = "Лабораторный анализ";
+            DragDrop += Form1_DragDrop;
+            DragEnter += Form1_DragEnter;
             tabControl1.ResumeLayout(false);
             tabRSD.ResumeLayout(false);
             tabRSD.PerformLayout();

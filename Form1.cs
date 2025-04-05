@@ -556,14 +556,14 @@ namespace LabAnalysisUI
                     {
                         notificationAlpha = 0;
                         notificationState = NotificationState.Off;
-                        if(currentNotificationLabel != null)
+                        if (currentNotificationLabel != null)
                             currentNotificationLabel.Visible = false;
                         fadeTimer.Stop();
                         return;
                     }
                     break;
             }
-            if(currentNotificationLabel != null)
+            if (currentNotificationLabel != null)
                 currentNotificationLabel.ForeColor = System.Drawing.Color.FromArgb(notificationAlpha, notificationOriginalColor);
         }
 
@@ -591,7 +591,7 @@ namespace LabAnalysisUI
                     int startPos = rtb.TextLength;
                     rtb.AppendText($"{driftValue:F2}");
                     int endPos = rtb.TextLength;
-                    
+
                     rtb.Select(startPos, endPos - startPos);
                     if (driftValue > 30)
                     {
@@ -624,15 +624,15 @@ namespace LabAnalysisUI
                 if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
                 {
                     rtb.AppendText("Значение дрейфа: ");
-                    
+
                     // Store current position for coloring
                     int startPos = rtb.TextLength;
                     rtb.AppendText($"{driftValue:F2}");
                     int endPos = rtb.TextLength;
-                    
+
                     // Select the numeric part
                     rtb.Select(startPos, endPos - startPos);
-                    
+
                     // Apply color based on value
                     if (driftValue > 30)
                     {
@@ -642,7 +642,7 @@ namespace LabAnalysisUI
                     {
                         rtb.SelectionColor = Color.Orange;
                     }
-                    
+
                     // Reset selection and color
                     rtb.SelectionStart = rtb.TextLength;
                     rtb.SelectionColor = rtb.ForeColor;
@@ -657,10 +657,11 @@ namespace LabAnalysisUI
             {
                 rtb.AppendText(text + Environment.NewLine);
             }
-            
+
             // Ensure scroll to latest text
             rtb.SelectionStart = rtb.TextLength;
             rtb.ScrollToCaret();
         }
+
     }
 }

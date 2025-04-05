@@ -296,16 +296,15 @@
             // 
             // txtResults
             // 
+            txtResults.HideSelection = false;
             txtResults.Location = new Point(12, 228);
             txtResults.Margin = new Padding(3, 4, 3, 4);
-            txtResults.Multiline = true;
             txtResults.Name = "txtResults";
             txtResults.ReadOnly = true;
             txtResults.ScrollBars = RichTextBoxScrollBars.Vertical;
             txtResults.Size = new Size(902, 532);
             txtResults.TabIndex = 10;
-            txtResults.HideSelection = false;
-            txtResults.WordWrap = true;
+            txtResults.Text = "";
             // 
             // lblDriftStart
             // 
@@ -406,16 +405,15 @@
             // 
             // txtDetectionLimitResults
             // 
+            txtDetectionLimitResults.HideSelection = false;
             txtDetectionLimitResults.Location = new Point(11, 171);
             txtDetectionLimitResults.Margin = new Padding(3, 4, 3, 4);
-            txtDetectionLimitResults.Multiline = true;
             txtDetectionLimitResults.Name = "txtDetectionLimitResults";
             txtDetectionLimitResults.ReadOnly = true;
             txtDetectionLimitResults.ScrollBars = RichTextBoxScrollBars.Vertical;
             txtDetectionLimitResults.Size = new Size(902, 532);
             txtDetectionLimitResults.TabIndex = 3;
-            txtDetectionLimitResults.HideSelection = false;
-            txtDetectionLimitResults.WordWrap = true;
+            txtDetectionLimitResults.Text = "";
             // 
             // btnDetectionLimitAnalyze
             // 
@@ -525,20 +523,19 @@
             // 
             // txtVirtualSamplesResults
             // 
+            txtVirtualSamplesResults.HideSelection = false;
             txtVirtualSamplesResults.Location = new Point(10, 156);
-            txtVirtualSamplesResults.Size = new Size(902, 532);
-            txtVirtualSamplesResults.Multiline = true;
+            txtVirtualSamplesResults.Name = "txtVirtualSamplesResults";
             txtVirtualSamplesResults.ReadOnly = true;
             txtVirtualSamplesResults.ScrollBars = RichTextBoxScrollBars.Vertical;
-            txtVirtualSamplesResults.Name = "txtVirtualSamplesResults";
+            txtVirtualSamplesResults.Size = new Size(902, 532);
             txtVirtualSamplesResults.TabIndex = 3;
-            txtVirtualSamplesResults.HideSelection = false;
-            txtVirtualSamplesResults.WordWrap = true;
+            txtVirtualSamplesResults.Text = "";
             // 
             // btnVirtualSamplesSave
             // 
             btnVirtualSamplesSave.Enabled = false;
-            btnVirtualSamplesSave.Location = new Point(10, 625);
+            btnVirtualSamplesSave.Location = new Point(10, 694);
             btnVirtualSamplesSave.Name = "btnVirtualSamplesSave";
             btnVirtualSamplesSave.Size = new Size(143, 33);
             btnVirtualSamplesSave.TabIndex = 4;

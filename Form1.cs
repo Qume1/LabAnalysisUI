@@ -1,43 +1,27 @@
+Ôªøusing System.Globalization;
+using LabAnalysisUI.Helpers;
+using LabAnalysisUI.Models;
 using LabAnalysisUI.Services;
-using System.Windows.Forms;
-using System.Diagnostics;
-using System.IO;
-using Timer = System.Windows.Forms.Timer; // ƒÓ·‡‚ÎÂÌÓ ‰Îˇ ÛÒÚ‡ÌÂÌËˇ ÌÂÓ‰ÌÓÁÌ‡˜ÌÓÒÚË
-
 
 namespace LabAnalysisUI
 {
     public partial class Form1 : Form
     {
-        private string selectedFilePath;
-        private readonly FileAnalyzer fileAnalyzer;
-        private FileAnalyzer.AnalysisResult currentResult;
-        private bool isExceededValuesVisible = false; // Changed initial state to false
-        private string detectionLimitFilePath;
-        private FileAnalyzer.DetectionLimitResult currentDetectionLimitResult;
-        private string virtualSamplesFilePath;
-        private FileAnalyzer.VirtualSamplesResult currentVirtualSamplesResult;
-        private Timer notificationTimer;
-        private enum NotificationState { FadeIn, Pause, FadeOut, Off }
-        private NotificationState notificationState = NotificationState.Off;
-        private int notificationAlpha = 0;
-        private int pauseTicks = 0;
-        private Timer fadeTimer;
-        private Color notificationOriginalColor = System.Drawing.Color.Black; // Original notification text color
-        private Label currentNotificationLabel;
+        private readonly FileAnalyzer fileAnalyzer = new();
+        private string selectedFilePath = string.Empty;
+        private string detectionLimitFilePath = string.Empty;
+        private string virtualSamplesFilePath = string.Empty;
+        private AnalysisResult? currentResult;
+        private DetectionLimitResult? currentDetectionLimitResult;
+        private VirtualSamplesResult? currentVirtualSamplesResult;
+        private bool isExceededValuesVisible;
 
         public Form1()
         {
             InitializeComponent();
-            this.KeyPreview = true;                     // Added line to capture key events
-            this.KeyDown += new KeyEventHandler(Form1_KeyDown); // Added line for key event
-            fileAnalyzer = new FileAnalyzer();
-            notificationTimer = new Timer();
-            notificationTimer.Interval = 3000; // 3 seconds
-            notificationTimer.Tick += NotificationTimer_Tick;
-            fadeTimer = new Timer();
-            fadeTimer.Interval = 50; // 50 ms per tick for smooth animation
-            fadeTimer.Tick += FadeTimer_Tick;
+            ThemeHelper.ConfigureForm(this);
+            KeyPreview = true;
+            KeyDown += Form1_KeyDown;
             SetupForm();
         }
 
@@ -45,631 +29,537 @@ namespace LabAnalysisUI
         {
             selectedFilePath = string.Empty;
             detectionLimitFilePath = string.Empty;
-            currentDetectionLimitResult = null;
             virtualSamplesFilePath = string.Empty;
+            currentResult = null;
+            currentDetectionLimitResult = null;
             currentVirtualSamplesResult = null;
-            UpdateShowExceededButtonText(); // Add initial button text setup
-            btnSaveDetectionReport.Enabled = false;  // Add this line
+            isExceededValuesVisible = false;
+
+            btnAnalyze.Enabled = false;
+            btnSaveOutput.Enabled = false;
+            btnShowExceeded.Enabled = false;
+            btnDetectionLimitAnalyze.Enabled = false;
+            btnDetectionLimitSave.Enabled = false;
+            btnVirtualSamplesAnalyze.Enabled = false;
+            btnVirtualSamplesSave.Enabled = false;
+
+            txtResults.Clear();
+            txtDetectionLimitResults.Clear();
+            txtVirtualSamplesResults.Clear();
+            chkFilterExceeded.Checked = false;
+            UpdateShowExceededButtonText();
+
+            SetStatusLabel(lblNotification, "–û–∂–∏–¥–∞–Ω–∏–µ —Ñ–∞–π–ª–∞", ThemeHelper.Warning);
+            SetStatusLabel(lblNotificationDetectionLimit, "–û–∂–∏–¥–∞–Ω–∏–µ —Ñ–∞–π–ª–∞", ThemeHelper.Warning);
+            SetStatusLabel(lblNotificationVirtualSamples, "–û–∂–∏–¥–∞–Ω–∏–µ —Ñ–∞–π–ª–∞", ThemeHelper.Warning);
+
+            lblRsdSummary.Text = "–ó–∞–≥—Ä—É–∑–∏—Ç–µ —Ñ–∞–π–ª, –Ω–∞—Å—Ç—Ä–æ–π—Ç–µ –ø–æ—Ä–æ–≥ –°–ö–û –∏ –∏–Ω—Ç–µ—Ä–≤–∞–ª –¥—Ä–µ–π—Ñ–∞, –∑–∞—Ç–µ–º –∑–∞–ø—É—Å—Ç–∏—Ç–µ –∞–Ω–∞–ª–∏–∑.";
+            lblDetectionLimitSummary.Text = "–ü–æ—Å–ª–µ –≤—ã–±–æ—Ä–∞ —Ñ–∞–π–ª–∞ –∑–¥–µ—Å—å –ø–æ—è–≤—è—Ç—Å—è –∏—Ç–æ–≥–æ–≤–∞—è –¥–æ–ª—è –ø—Ä–µ–≤—ã—à–µ–Ω–∏–π –∏ —Ä–∞—Å—Å—á–∏—Ç–∞–Ω–Ω—ã–µ –∏–Ω—Ç–µ—Ä–≤–∞–ª—ã.";
+            lblVirtualSamplesSummary.Text = "–í—ã–±–µ—Ä–∏—Ç–µ —Ñ–∞–π–ª –∏ –ø–∞—Ä–∞–º–µ—Ç—Ä—ã –≤–∏—Ä—Ç—É–∞–ª—å–Ω—ã—Ö –ø—Ä–æ–±, —á—Ç–æ–±—ã –ø–æ–ª—É—á–∏—Ç—å —Ä–∞—Å—á–µ—Ç –ø–æ –æ–∫–Ω–∞–º –∏ –¥–∏–∞–ø–∞–∑–æ–Ω–∞–º —Å—Ç—Ä–æ–∫.";
         }
 
-        private void btnSelectFile_Click(object sender, EventArgs e)
+        private void btnSelectFile_Click(object? sender, EventArgs e)
         {
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            SelectFile(path => ApplyRsdFile(path, "–§–∞–π–ª –∑–∞–≥—Ä—É–∂–µ–Ω"));
+        }
+
+        private async void btnAnalyze_Click(object? sender, EventArgs e)
+        {
+            if (!EnsureFileSelected(selectedFilePath))
             {
-                selectedFilePath = openFileDialog1.FileName;
-                txtFilePath.Text = selectedFilePath;
-                btnAnalyze.Enabled = true;
+                return;
+            }
+
+            var driftStart = (double)numDriftStart.Value;
+            var driftEnd = (double)numDriftEnd.Value;
+            if (driftEnd <= driftStart)
+            {
+                SetStatusLabel(lblNotification, "–ü—Ä–æ–≤–µ—Ä—å—Ç–µ –¥–∏–∞–ø–∞–∑–æ–Ω –¥—Ä–µ–π—Ñ–∞", ThemeHelper.Warning);
+                ShowError("–ö–æ–Ω–µ—Ü –¥–∏–∞–ø–∞–∑–æ–Ω–∞ –¥—Ä–µ–π—Ñ–∞ –¥–æ–ª–∂–µ–Ω –±—ã—Ç—å –±–æ–ª—å—à–µ –Ω–∞—á–∞–ª–∞.");
+                return;
+            }
+
+            await RunBusyActionAsync(btnAnalyze, "–ò–¥–µ—Ç –∞–Ω–∞–ª–∏–∑...", async () =>
+            {
+                currentResult = await Task.Run(() => fileAnalyzer.AnalyzeFile(
+                    selectedFilePath,
+                    (double)numMinStdDev.Value,
+                    (double)numStartSeconds.Value,
+                    driftStart,
+                    driftEnd));
+
+                if (currentResult is null || !currentResult.IsSuccess)
+                {
+                    btnSaveOutput.Enabled = false;
+                    btnShowExceeded.Enabled = false;
+                    txtResults.Clear();
+                    lblRsdSummary.Text = currentResult?.Messages.FirstOrDefault() ?? "–ù–µ —É–¥–∞–ª–æ—Å—å –æ–±—Ä–∞–±–æ—Ç–∞—Ç—å –≤—ã–±—Ä–∞–Ω–Ω—ã–π —Ñ–∞–π–ª.";
+                    SetStatusLabel(lblNotification, "–ê–Ω–∞–ª–∏–∑ –∑–∞–≤–µ—Ä—à–∏–ª—Å—è –æ—à–∏–±–∫–æ–π", ThemeHelper.Danger);
+                    ShowError(currentResult?.Messages.FirstOrDefault() ?? "–û—à–∏–±–∫–∞ –ø—Ä–∏ –∞–Ω–∞–ª–∏–∑–µ —Ñ–∞–π–ª–∞.");
+                    return;
+                }
+
+                isExceededValuesVisible = false;
+                btnSaveOutput.Enabled = true;
+                btnShowExceeded.Enabled = currentResult.ExceededValues.Count > 0;
+                UpdateShowExceededButtonText();
+                RenderRsdResults();
+                SetStatusLabel(lblNotification, "–ê–Ω–∞–ª–∏–∑ –∑–∞–≤–µ—Ä—à–µ–Ω", ThemeHelper.Success);
+            });
+        }
+
+        private void btnSaveOutput_Click(object? sender, EventArgs e)
+        {
+            if (currentResult is null || !currentResult.IsSuccess)
+            {
+                return;
+            }
+
+            var reportLines = FileAnalyzer.CreateAnalysisReport(currentResult, includeExceededValues: !chkFilterExceeded.Checked);
+            SaveLines(reportLines, "–°–æ—Ö—Ä–∞–Ω–∏—Ç—å –æ—Ç—á–µ—Ç –ø–æ –°–ö–û", "–û—Ç—á–µ—Ç —É—Å–ø–µ—à–Ω–æ —Å–æ—Ö—Ä–∞–Ω–µ–Ω.");
+        }
+
+        private void btnShowExceeded_Click(object? sender, EventArgs e)
+        {
+            if (currentResult is null || !currentResult.IsSuccess || currentResult.ExceededValues.Count == 0)
+            {
+                return;
+            }
+
+            var shouldShowExceeded = !isExceededValuesVisible;
+            if (shouldShowExceeded && currentResult.ExceededValues.Count > 200)
+            {
+                var confirmation = MessageBox.Show(
+                    "–ë—É–¥–µ—Ç –ø–æ–∫–∞–∑–∞–Ω–æ –±–æ–ª–µ–µ 200 —Å—Ç—Ä–æ–∫. –ü—Ä–æ–¥–æ–ª–∂–∏—Ç—å?",
+                    "–ü–æ–¥—Ç–≤–µ—Ä–∂–¥–µ–Ω–∏–µ",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (confirmation == DialogResult.No)
+                {
+                    return;
+                }
+            }
+
+            isExceededValuesVisible = shouldShowExceeded;
+            UpdateShowExceededButtonText();
+            RenderRsdResults();
+        }
+
+        private void btnDetectionLimitSelectFile_Click(object? sender, EventArgs e)
+        {
+            SelectFile(path => ApplyDetectionLimitFile(path, "–§–∞–π–ª –∑–∞–≥—Ä—É–∂–µ–Ω"));
+        }
+
+        private async void btnDetectionLimitAnalyze_Click(object? sender, EventArgs e)
+        {
+            if (!EnsureFileSelected(detectionLimitFilePath))
+            {
+                return;
+            }
+
+            await RunBusyActionAsync(btnDetectionLimitAnalyze, "–ò–¥–µ—Ç —Ä–∞—Å—á–µ—Ç...", async () =>
+            {
+                currentDetectionLimitResult = await Task.Run(() => fileAnalyzer.AnalyzeDetectionLimit(detectionLimitFilePath));
+
+                if (currentDetectionLimitResult is null || !currentDetectionLimitResult.IsSuccess)
+                {
+                    btnDetectionLimitSave.Enabled = false;
+                    txtDetectionLimitResults.Clear();
+                    lblDetectionLimitSummary.Text = currentDetectionLimitResult?.Messages.FirstOrDefault() ?? "–ù–µ —É–¥–∞–ª–æ—Å—å —Ä–∞—Å—Å—á–∏—Ç–∞—Ç—å –ø—Ä–µ–¥–µ–ª –¥–µ—Ç–µ–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏—è.";
+                    SetStatusLabel(lblNotificationDetectionLimit, "–†–∞—Å—á–µ—Ç –∑–∞–≤–µ—Ä—à–∏–ª—Å—è –æ—à–∏–±–∫–æ–π", ThemeHelper.Danger);
+                    ShowError(currentDetectionLimitResult?.Messages.FirstOrDefault() ?? "–û—à–∏–±–∫–∞ –ø—Ä–∏ –∞–Ω–∞–ª–∏–∑–µ —Ñ–∞–π–ª–∞.");
+                    return;
+                }
+
+                btnDetectionLimitSave.Enabled = true;
+                RenderDetectionLimitResults();
+                SetStatusLabel(lblNotificationDetectionLimit, "–†–∞—Å—á–µ—Ç –∑–∞–≤–µ—Ä—à–µ–Ω", ThemeHelper.Success);
+            });
+        }
+
+        private void btnDetectionLimitSave_Click(object? sender, EventArgs e)
+        {
+            if (currentDetectionLimitResult is null || !currentDetectionLimitResult.IsSuccess)
+            {
+                return;
+            }
+
+            SaveLines(currentDetectionLimitResult.Messages, "–°–æ—Ö—Ä–∞–Ω–∏—Ç—å –æ—Ç—á–µ—Ç –ø–æ –ø—Ä–µ–¥–µ–ª—É –¥–µ—Ç–µ–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏—è", "–û—Ç—á–µ—Ç —É—Å–ø–µ—à–Ω–æ —Å–æ—Ö—Ä–∞–Ω–µ–Ω.");
+        }
+
+        private void btnVirtualSamplesSelectFile_Click(object? sender, EventArgs e)
+        {
+            SelectFile(path => ApplyVirtualSamplesFile(path, "–§–∞–π–ª –∑–∞–≥—Ä—É–∂–µ–Ω"));
+        }
+
+        private async void btnVirtualSamplesAnalyze_Click(object? sender, EventArgs e)
+        {
+            if (!EnsureFileSelected(virtualSamplesFilePath))
+            {
+                return;
+            }
+
+            await RunBusyActionAsync(btnVirtualSamplesAnalyze, "–ò–¥–µ—Ç —Ä–∞—Å—á–µ—Ç...", async () =>
+            {
+                currentVirtualSamplesResult = await Task.Run(() => fileAnalyzer.AnalyzeVirtualSamples(
+                    virtualSamplesFilePath,
+                    (double)numCalibrationCoef.Value,
+                    (int)numIntervalSize.Value));
+
+                if (currentVirtualSamplesResult is null || !currentVirtualSamplesResult.IsSuccess)
+                {
+                    btnVirtualSamplesSave.Enabled = false;
+                    txtVirtualSamplesResults.Clear();
+                    lblVirtualSamplesSummary.Text = currentVirtualSamplesResult?.Messages.FirstOrDefault() ?? "–ù–µ —É–¥–∞–ª–æ—Å—å —Ä–∞—Å—Å—á–∏—Ç–∞—Ç—å –≤–∏—Ä—Ç—É–∞–ª—å–Ω—ã–µ –ø—Ä–æ–±—ã.";
+                    SetStatusLabel(lblNotificationVirtualSamples, "–†–∞—Å—á–µ—Ç –∑–∞–≤–µ—Ä—à–∏–ª—Å—è –æ—à–∏–±–∫–æ–π", ThemeHelper.Danger);
+                    ShowError(currentVirtualSamplesResult?.Messages.FirstOrDefault() ?? "–û—à–∏–±–∫–∞ –ø—Ä–∏ –∞–Ω–∞–ª–∏–∑–µ —Ñ–∞–π–ª–∞.");
+                    return;
+                }
+
+                btnVirtualSamplesSave.Enabled = true;
+                RenderVirtualSamplesResults();
+                SetStatusLabel(lblNotificationVirtualSamples, "–†–∞—Å—á–µ—Ç –∑–∞–≤–µ—Ä—à–µ–Ω", ThemeHelper.Success);
+            });
+        }
+
+        private void btnVirtualSamplesSave_Click(object? sender, EventArgs e)
+        {
+            if (currentVirtualSamplesResult is null || !currentVirtualSamplesResult.IsSuccess)
+            {
+                return;
+            }
+
+            SaveLines(currentVirtualSamplesResult.Messages, "–°–æ—Ö—Ä–∞–Ω–∏—Ç—å –æ—Ç—á–µ—Ç –ø–æ –≤–∏—Ä—Ç—É–∞–ª—å–Ω—ã–º –ø—Ä–æ–±–∞–º", "–û—Ç—á–µ—Ç —É—Å–ø–µ—à–Ω–æ —Å–æ—Ö—Ä–∞–Ω–µ–Ω.");
+        }
+
+        private void fileTextBox_DragEnter(object? sender, DragEventArgs e)
+        {
+            e.Effect = TryGetDroppedFile(e, out _) ? DragDropEffects.Copy : DragDropEffects.None;
+        }
+
+        private void fileTextBox_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (sender is not TextBox textBox || !TryGetDroppedFile(e, out var filePath))
+            {
+                return;
+            }
+
+            if (ReferenceEquals(textBox, txtFilePath))
+            {
+                ApplyRsdFile(filePath, "–§–∞–π–ª –¥–æ–±–∞–≤–ª–µ–Ω –ø–µ—Ä–µ—Ç–∞—Å–∫–∏–≤–∞–Ω–∏–µ–º");
+            }
+            else if (ReferenceEquals(textBox, txtDetectionLimitFilePath))
+            {
+                ApplyDetectionLimitFile(filePath, "–§–∞–π–ª –¥–æ–±–∞–≤–ª–µ–Ω –ø–µ—Ä–µ—Ç–∞—Å–∫–∏–≤–∞–Ω–∏–µ–º");
+            }
+            else if (ReferenceEquals(textBox, txtVirtualSamplesFilePath))
+            {
+                ApplyVirtualSamplesFile(filePath, "–§–∞–π–ª –¥–æ–±–∞–≤–ª–µ–Ω –ø–µ—Ä–µ—Ç–∞—Å–∫–∏–≤–∞–Ω–∏–µ–º");
             }
         }
 
-        private async void btnAnalyze_Click(object sender, EventArgs e)
+        private void Form1_DragEnter(object? sender, DragEventArgs e)
         {
-            if (string.IsNullOrEmpty(selectedFilePath))
+            e.Effect = TryGetDroppedFile(e, out _) ? DragDropEffects.Copy : DragDropEffects.None;
+        }
+
+        private void Form1_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (!TryGetDroppedFile(e, out var filePath))
             {
-                MessageBox.Show("¬˚·ÂËÚÂ Ù‡ÈÎ ‰Îˇ ‡Ì‡ÎËÁ‡", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (tabControl1.SelectedTab == tabRSD)
+            {
+                ApplyRsdFile(filePath, "–§–∞–π–ª –¥–æ–±–∞–≤–ª–µ–Ω –ø–µ—Ä–µ—Ç–∞—Å–∫–∏–≤–∞–Ω–∏–µ–º");
+            }
+            else if (tabControl1.SelectedTab == tabDetectionLimit)
+            {
+                ApplyDetectionLimitFile(filePath, "–§–∞–π–ª –¥–æ–±–∞–≤–ª–µ–Ω –ø–µ—Ä–µ—Ç–∞—Å–∫–∏–≤–∞–Ω–∏–µ–º");
+            }
+            else if (tabControl1.SelectedTab == tabVirtualSamples)
+            {
+                ApplyVirtualSamplesFile(filePath, "–§–∞–π–ª –¥–æ–±–∞–≤–ª–µ–Ω –ø–µ—Ä–µ—Ç–∞—Å–∫–∏–≤–∞–Ω–∏–µ–º");
+            }
+        }
+
+        private void Form1_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter)
+            {
+                return;
+            }
+
+            if (tabControl1.SelectedTab == tabRSD && btnAnalyze.Enabled)
+            {
+                btnAnalyze.PerformClick();
+            }
+            else if (tabControl1.SelectedTab == tabDetectionLimit && btnDetectionLimitAnalyze.Enabled)
+            {
+                btnDetectionLimitAnalyze.PerformClick();
+            }
+            else if (tabControl1.SelectedTab == tabVirtualSamples && btnVirtualSamplesAnalyze.Enabled)
+            {
+                btnVirtualSamplesAnalyze.PerformClick();
+            }
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+
+        private void ApplyRsdFile(string filePath, string statusText)
+        {
+            selectedFilePath = filePath;
+            txtFilePath.Text = filePath;
+            currentResult = null;
+            isExceededValuesVisible = false;
+            btnAnalyze.Enabled = true;
+            btnSaveOutput.Enabled = false;
+            btnShowExceeded.Enabled = false;
+            txtResults.Clear();
+            UpdateShowExceededButtonText();
+            lblRsdSummary.Text = $"–§–∞–π–ª {Path.GetFileName(filePath)} –≥–æ—Ç–æ–≤ –∫ –∞–Ω–∞–ª–∏–∑—É. –ü—Ä–æ–≤–µ—Ä—å—Ç–µ –ø–∞—Ä–∞–º–µ—Ç—Ä—ã —Å–ª–µ–≤–∞ –∏ –∑–∞–ø—É—Å—Ç–∏—Ç–µ —Ä–∞—Å—á–µ—Ç.";
+            SetStatusLabel(lblNotification, statusText, ThemeHelper.Success);
+        }
+
+        private void ApplyDetectionLimitFile(string filePath, string statusText)
+        {
+            detectionLimitFilePath = filePath;
+            txtDetectionLimitFilePath.Text = filePath;
+            currentDetectionLimitResult = null;
+            btnDetectionLimitAnalyze.Enabled = true;
+            btnDetectionLimitSave.Enabled = false;
+            txtDetectionLimitResults.Clear();
+            lblDetectionLimitSummary.Text = $"–§–∞–π–ª {Path.GetFileName(filePath)} –≥–æ—Ç–æ–≤ –∫ —Ä–∞—Å—á–µ—Ç—É –ø—Ä–µ–¥–µ–ª–∞ –¥–µ—Ç–µ–∫—Ç–∏—Ä–æ–≤–∞–Ω–∏—è.";
+            SetStatusLabel(lblNotificationDetectionLimit, statusText, ThemeHelper.Success);
+        }
+
+        private void ApplyVirtualSamplesFile(string filePath, string statusText)
+        {
+            virtualSamplesFilePath = filePath;
+            txtVirtualSamplesFilePath.Text = filePath;
+            currentVirtualSamplesResult = null;
+            btnVirtualSamplesAnalyze.Enabled = true;
+            btnVirtualSamplesSave.Enabled = false;
+            txtVirtualSamplesResults.Clear();
+            lblVirtualSamplesSummary.Text = $"–§–∞–π–ª {Path.GetFileName(filePath)} –≥–æ—Ç–æ–≤ –∫ —Ä–∞—Å—á–µ—Ç—É –≤–∏—Ä—Ç—É–∞–ª—å–Ω—ã—Ö –ø—Ä–æ–±.";
+            SetStatusLabel(lblNotificationVirtualSamples, statusText, ThemeHelper.Success);
+        }
+
+        private void RenderRsdResults()
+        {
+            if (currentResult is null)
+            {
+                return;
+            }
+
+            txtResults.Clear();
+            foreach (var line in FileAnalyzer.CreateAnalysisReport(currentResult, isExceededValuesVisible))
+            {
+                AppendFormattedLine(txtResults, line);
+            }
+
+            var exceededCount = currentResult.ExceededValues.Count;
+            var driftText = currentResult.MaxSignal.HasValue && currentResult.MinSignal.HasValue
+                ? currentResult.DriftValue.ToString("F3", CultureInfo.InvariantCulture)
+                : "–Ω/–¥";
+            lblRsdSummary.Text =
+                $"–°—Ä–µ–¥–Ω–µ–µ –°–ö–û: {currentResult.AverageStdDev:F3} | –ü—Ä–µ–≤—ã—à–µ–Ω–∏—è: {currentResult.PercentageAboveThreshold:F2}% ({exceededCount} —Ç–æ—á–µ–∫)\r\n" +
+                $"–î–ª–∏—Ç–µ–ª—å–Ω–æ—Å—Ç—å: {currentResult.TotalMeasurementTime} —Å–µ–∫ | –î—Ä–µ–π—Ñ: {driftText}";
+        }
+
+        private void RenderDetectionLimitResults()
+        {
+            if (currentDetectionLimitResult is null)
+            {
+                return;
+            }
+
+            txtDetectionLimitResults.Clear();
+            foreach (var line in currentDetectionLimitResult.Messages)
+            {
+                AppendFormattedLine(txtDetectionLimitResults, line);
+            }
+
+            lblDetectionLimitSummary.Text =
+                $"–ò–Ω—Ç–µ—Ä–≤–∞–ª–æ–≤: {currentDetectionLimitResult.TotalCount} | –í—ã—à–µ 0.2: {currentDetectionLimitResult.CountAboveThreshold}\r\n" +
+                $"–î–æ–ª—è –ø—Ä–µ–≤—ã—à–µ–Ω–∏–π: {currentDetectionLimitResult.PercentageAboveThreshold:F3}%";
+        }
+
+        private void RenderVirtualSamplesResults()
+        {
+            if (currentVirtualSamplesResult is null)
+            {
+                return;
+            }
+
+            txtVirtualSamplesResults.Clear();
+            foreach (var line in currentVirtualSamplesResult.Messages)
+            {
+                AppendFormattedLine(txtVirtualSamplesResults, line);
+            }
+
+            lblVirtualSamplesSummary.Text =
+                $"–ì—Ä—É–ø–ø –≤–∏—Ä—Ç—É–∞–ª—å–Ω—ã—Ö –ø—Ä–æ–±: {currentVirtualSamplesResult.TotalCount} | –í—ã—à–µ 0.2: {currentVirtualSamplesResult.CountAboveThreshold}\r\n" +
+                $"–î–æ–ª—è –ø—Ä–µ–≤—ã—à–µ–Ω–∏–π: {currentVirtualSamplesResult.PercentageAboveThreshold:F3}%";
+        }
+
+        private static void AppendFormattedLine(RichTextBox box, string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                box.AppendText(Environment.NewLine);
+                return;
+            }
+
+            const string driftPrefix = "–ó–Ω–∞—á–µ–Ω–∏–µ –¥—Ä–µ–π—Ñ–∞: ";
+            if (!text.StartsWith(driftPrefix, StringComparison.Ordinal))
+            {
+                box.AppendText(text + Environment.NewLine);
+                box.SelectionStart = box.TextLength;
+                box.ScrollToCaret();
+                return;
+            }
+
+            var driftValueText = text[driftPrefix.Length..].Trim();
+            box.SelectionColor = box.ForeColor;
+            box.AppendText(driftPrefix);
+
+            var start = box.TextLength;
+            box.AppendText(driftValueText);
+            box.Select(start, driftValueText.Length);
+
+            if (TryParseFlexibleDouble(driftValueText, out var driftValue))
+            {
+                box.SelectionColor = driftValue switch
+                {
+                    > 30 => ThemeHelper.Danger,
+                    > 25 => ThemeHelper.Warning,
+                    _ => ThemeHelper.Success
+                };
+            }
+            else
+            {
+                box.SelectionColor = box.ForeColor;
+            }
+
+            box.SelectionStart = box.TextLength;
+            box.SelectionColor = box.ForeColor;
+            box.AppendText(Environment.NewLine);
+            box.ScrollToCaret();
+        }
+
+        private async Task RunBusyActionAsync(Button button, string busyText, Func<Task> action)
+        {
+            var originalText = button.Text;
+            try
+            {
+                button.Enabled = false;
+                button.Text = busyText;
+                Cursor = Cursors.WaitCursor;
+                await action();
+            }
+            catch (Exception ex)
+            {
+                ShowError($"–ù–µ–ø—Ä–µ–¥–≤–∏–¥–µ–Ω–Ω–∞—è –æ—à–∏–±–∫–∞: {ex.Message}");
+            }
+            finally
+            {
+                button.Text = originalText;
+                button.Enabled = true;
+                Cursor = Cursors.Default;
+            }
+        }
+
+        private void SaveLines(IEnumerable<string> lines, string title, string successMessage)
+        {
+            using var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "–¢–µ–∫—Å—Ç–æ–≤—ã–µ —Ñ–∞–π–ª—ã (*.txt)|*.txt|–í—Å–µ —Ñ–∞–π–ª—ã (*.*)|*.*",
+                Title = title,
+                DefaultExt = "txt"
+            };
+
+            if (saveFileDialog.ShowDialog(this) != DialogResult.OK)
+            {
                 return;
             }
 
             try
             {
-                btnAnalyze.Enabled = false;
-                Cursor = Cursors.WaitCursor;
-                txtResults.Clear();
-
-                var startSeconds = (double)numStartSeconds.Value;
-                var driftStart = (double)numDriftStart.Value;
-                var driftEnd = (double)numDriftEnd.Value;
-
-                if (driftEnd <= driftStart)
-                {
-                    MessageBox.Show(" ÓÌÂˆ ‰Ë‡Ô‡ÁÓÌ‡ ‰ÂÈÙ‡ ‰ÓÎÊÂÌ ·˚Ú¸ ·ÓÎ¸¯Â Ì‡˜‡Î‡", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                currentResult = await Task.Run(() => fileAnalyzer.AnalyzeFile(
-                    selectedFilePath,
-                    (double)numMinStdDev.Value,
-                    startSeconds,  // Pass startSeconds for — Œ calculation
-                    driftStart,   // Pass driftStart for drift calculation
-                    driftEnd));   // Pass driftEnd for drift calculation
-
-                if (!currentResult.IsSuccess)
-                {
-                    // Display the specific error message from the analyzer
-                    MessageBox.Show(currentResult.Messages.FirstOrDefault() ?? "Œ¯Ë·Í‡ ÔË ‡Ì‡ÎËÁÂ Ù‡ÈÎ‡", 
-                        "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                isExceededValuesVisible = false; // Reset to hidden state after new analysis
-                DisplayResults(false); // Initially display without exceeded values
-
-                btnSaveOutput.Enabled = currentResult.IsSuccess;
-                btnShowExceeded.Enabled = currentResult.IsSuccess;
-                UpdateShowExceededButtonText();
+                File.WriteAllLines(saveFileDialog.FileName, lines);
+                MessageBox.Show(successMessage, "–ò–Ω—Ñ–æ—Ä–º–∞—Ü–∏—è", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Œ¯Ë·Í‡ ÔË ‡Ì‡ÎËÁÂ Ù‡ÈÎ‡: {ex.Message}", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                btnAnalyze.Enabled = true;
-                Cursor = Cursors.Default;
+                ShowError($"–û—à–∏–±–∫–∞ –ø—Ä–∏ —Å–æ—Ö—Ä–∞–Ω–µ–Ω–∏–∏: {ex.Message}");
             }
         }
 
-        private void btnSaveOutput_Click(object sender, EventArgs e)
+        private void SelectFile(Action<string> applySelection)
         {
-            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
             {
-                saveFileDialog.Filter = "“ÂÍÒÚÓ‚˚Â Ù‡ÈÎ˚ (*.txt)|*.txt|¬ÒÂ Ù‡ÈÎ˚ (*.*)|*.*";
-                saveFileDialog.Title = "—Óı‡ÌËÚ¸ ÓÚ˜ÂÚ";
-
-                if (saveFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    string textToSave = txtResults.Text;
-
-                    // If checkbox is checked, filter the results
-                    if (chkFilterExceeded.Checked)
-                    {
-                        var lines = txtResults.Lines;
-                        var filteredLines = new List<string>();
-                        decimal threshold = numMinStdDev.Value;
-
-                        foreach (var line in lines)
-                        {
-                            // Add headers and non-data lines
-                            if (!line.Contains("— Œ:") || !decimal.TryParse(line.Split(':')[1].Trim(), out decimal sko))
-                            {
-                                filteredLines.Add(line);
-                                continue;
-                            }
-
-                            // Only add lines where — Œ is within threshold
-                            if (sko <= threshold)
-                            {
-                                filteredLines.Add(line);
-                            }
-                        }
-
-                        textToSave = string.Join(Environment.NewLine, filteredLines);
-                    }
-
-                    File.WriteAllText(saveFileDialog.FileName, textToSave);
-                    MessageBox.Show("ŒÚ˜ÂÚ ÒÓı‡ÌÂÌ ÛÒÔÂ¯ÌÓ!", "”ÒÔÂı", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                applySelection(openFileDialog1.FileName);
             }
         }
 
-        private void btnShowExceeded_Click(object sender, EventArgs e)
+        private bool EnsureFileSelected(string filePath)
         {
-            if (currentResult == null || !currentResult.IsSuccess)
-                return;
-
-            // Determine new visibility state without altering global flag yet.
-            bool newVisibility = !isExceededValuesVisible;
-
-            // If enabling exceeded values display and there are more than 200 lines, ask user confirmation.
-            if (newVisibility && currentResult.ExceededValues.Count > 200)
+            if (!string.IsNullOrWhiteSpace(filePath))
             {
-                var result = MessageBox.Show("¡Û‰ÂÚ ‚˚‚Â‰ÂÌÓ ·ÓÎÂÂ 200 ÒÚÓÍ. œÓ‰ÓÎÊËÚ¸?",
-                                             "œÂ‰ÛÔÂÊ‰ÂÌËÂ",
-                                             MessageBoxButtons.YesNo,
-                                             MessageBoxIcon.Warning);
-                if (result == DialogResult.No)
-                {
-                    return;
-                }
+                return true;
             }
 
-            // Update global flag, button text, and display results.
-            isExceededValuesVisible = newVisibility;
-            UpdateShowExceededButtonText();
-            DisplayResults(isExceededValuesVisible);
+            ShowError("–°–Ω–∞—á–∞–ª–∞ –≤—ã–±–µ—Ä–∏—Ç–µ —Ñ–∞–π–ª –¥–ª—è –∞–Ω–∞–ª–∏–∑–∞.");
+            return false;
         }
 
         private void UpdateShowExceededButtonText()
         {
-            btnShowExceeded.Text = isExceededValuesVisible ? "—Í˚Ú¸ — Œ" : "œÓÍ‡Á‡Ú¸ — Œ";
+            btnShowExceeded.Text = isExceededValuesVisible ? "–°–∫—Ä—ã—Ç—å –ø—Ä–µ–≤—ã—à–µ–Ω–∏—è" : "–ü–æ–∫–∞–∑–∞—Ç—å –ø—Ä–µ–≤—ã—à–µ–Ω–∏—è";
         }
 
-        private void DisplayResults(bool showExceededValues)
+        private static bool TryGetDroppedFile(DragEventArgs e, out string filePath)
         {
-            if (currentResult == null) return;
-
-            txtResults.Clear();
-
-            // Show general stats
-            foreach (var message in currentResult.GeneralStats)
+            filePath = string.Empty;
+            if (!e.Data!.GetDataPresent(DataFormats.FileDrop))
             {
-                AppendTextWithScroll(txtResults, message, true);
+                return false;
             }
 
-            // Show exceeded values if enabled
-            if (showExceededValues && currentResult.ExceededValues.Any())
+            if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0)
             {
-                AppendTextWithScroll(txtResults, "");
-                AppendTextWithScroll(txtResults, $"«Ì‡˜ÂÌËˇ — Œ, ÔÂ‚˚¯‡˛˘ËÂ {currentResult.UsedThreshold:F2}:");
-                foreach (var value in currentResult.ExceededValues)
-                {
-                    AppendTextWithScroll(txtResults, value);
-                }
+                return false;
             }
+
+            if (!File.Exists(files[0]))
+            {
+                return false;
+            }
+
+            filePath = files[0];
+            return true;
         }
 
-        private void btnDetectionLimitSelectFile_Click(object sender, EventArgs e)
+        private static bool TryParseFlexibleDouble(string rawValue, out double value)
         {
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                detectionLimitFilePath = openFileDialog1.FileName;
-                txtDetectionLimitFilePath.Text = detectionLimitFilePath;
-                btnDetectionLimitAnalyze.Enabled = true;
-                btnSaveDetectionReport.Enabled = false;  // Add this line
-            }
+            var normalizedValue = rawValue.Replace(',', '.');
+            return double.TryParse(normalizedValue, NumberStyles.Any, CultureInfo.InvariantCulture, out value);
         }
 
-        private async void btnDetectionLimitAnalyze_Click(object sender, EventArgs e)
+        private static void SetStatusLabel(Label label, string text, Color accent)
         {
-            if (string.IsNullOrEmpty(detectionLimitFilePath))
-            {
-                MessageBox.Show("¬˚·ÂËÚÂ Ù‡ÈÎ ‰Îˇ ‡Ì‡ÎËÁ‡", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            try
-            {
-                btnDetectionLimitAnalyze.Enabled = false;
-                Cursor = Cursors.WaitCursor;
-                txtDetectionLimitResults.Clear();
-
-                currentDetectionLimitResult = await Task.Run(() => fileAnalyzer.AnalyzeDetectionLimit(detectionLimitFilePath));
-
-                if (currentDetectionLimitResult.IsSuccess)
-                {
-                    foreach (var message in currentDetectionLimitResult.Messages)
-                    {
-                        AppendTextWithScroll(txtDetectionLimitResults, message, true);
-                    }
-                    btnDetectionLimitSave.Enabled = true;
-                    btnSaveDetectionReport.Enabled = true;
-                }
-                else
-                {
-                    MessageBox.Show("Œ¯Ë·Í‡ ÔË ‡Ì‡ÎËÁÂ Ù‡ÈÎ‡", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Œ¯Ë·Í‡ ÔË ‡Ì‡ÎËÁÂ Ù‡ÈÎ‡: {ex.Message}", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                btnDetectionLimitAnalyze.Enabled = true;
-                Cursor = Cursors.Default;
-            }
+            label.Text = text;
+            ThemeHelper.StyleStatusLabel(label, accent);
         }
 
-        private void btnDetectionLimitSave_Click(object sender, EventArgs e)
+        private static void ShowError(string message)
         {
-            if (currentDetectionLimitResult == null || !currentDetectionLimitResult.IsSuccess)
-                return;
-
-            var saveFileDialog = new SaveFileDialog
-            {
-                Filter = "“ÂÍÒÚÓ‚˚Â Ù‡ÈÎ˚ (*.txt)|*.txt|¬ÒÂ Ù‡ÈÎ˚ (*.*)|*.*",
-                Title = "—Óı‡ÌËÚ¸ ÂÁÛÎ¸Ú‡Ú˚ ‡Ì‡ÎËÁ‡",
-                DefaultExt = "txt"
-            };
-
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                    fileAnalyzer.SaveDetectionLimitResults(currentDetectionLimitResult, saveFileDialog.FileName);
-                    MessageBox.Show("–ÂÁÛÎ¸Ú‡Ú˚ ÛÒÔÂ¯ÌÓ ÒÓı‡ÌÂÌ˚", "»ÌÙÓÏ‡ˆËˇ", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Œ¯Ë·Í‡ ÔË ÒÓı‡ÌÂÌËË: {ex.Message}", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
+            MessageBox.Show(message, "–û—à–∏–±–∫–∞", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-
-        private void btnSaveDetectionReport_Click(object sender, EventArgs e)
-        {
-            if (currentDetectionLimitResult == null || currentDetectionLimitResult.Messages.Count == 0)
-            {
-                MessageBox.Show("ÕÂÚ ‰‡ÌÌ˚ı ‰Îˇ ÒÓı‡ÌÂÌËˇ ÓÚ˜ÂÚ‡.", "»ÌÙÓÏ‡ˆËˇ", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
-            {
-                saveFileDialog.Filter = "“ÂÍÒÚÓ‚˚Â Ù‡ÈÎ˚ (*.txt)|*.txt|¬ÒÂ Ù‡ÈÎ˚ (*.*)|*.*";
-                saveFileDialog.Title = "—Óı‡ÌËÚ¸ ÓÚ˜ÂÚ";
-                if (saveFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    try
-                    {
-                        fileAnalyzer.SaveDetectionLimitResults(currentDetectionLimitResult, saveFileDialog.FileName);
-                        MessageBox.Show("ŒÚ˜ÂÚ ÛÒÔÂ¯ÌÓ ÒÓı‡ÌÂÌ.", "»ÌÙÓÏ‡ˆËˇ", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Œ¯Ë·Í‡ ÔË ÒÓı‡ÌÂÌËË ÓÚ˜ÂÚ‡: " + ex.Message, "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
-        }
-
-        private void btnVirtualSamplesSelectFile_Click(object sender, EventArgs e)
-        {
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                virtualSamplesFilePath = openFileDialog1.FileName;
-                txtVirtualSamplesFilePath.Text = virtualSamplesFilePath;
-                btnVirtualSamplesAnalyze.Enabled = true;
-                btnVirtualSamplesSave.Enabled = false;
-            }
-        }
-
-        private async void btnVirtualSamplesAnalyze_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(virtualSamplesFilePath))
-            {
-                MessageBox.Show("¬˚·ÂËÚÂ Ù‡ÈÎ ‰Îˇ ‡Ì‡ÎËÁ‡", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            try
-            {
-                btnVirtualSamplesAnalyze.Enabled = false;
-                Cursor = Cursors.WaitCursor;
-                txtVirtualSamplesResults.Clear();
-
-                double calibrationCoef = (double)numCalibrationCoef.Value;
-                int intervalSize = (int)numIntervalSize.Value;
-
-                currentVirtualSamplesResult = await Task.Run(() =>
-                    fileAnalyzer.AnalyzeVirtualSamples(virtualSamplesFilePath, calibrationCoef, intervalSize));
-
-                if (currentVirtualSamplesResult.IsSuccess)
-                {
-                    foreach (var message in currentVirtualSamplesResult.Messages)
-                    {
-                        AppendTextWithScroll(txtVirtualSamplesResults, message, true);
-                    }
-                    btnVirtualSamplesSave.Enabled = true;
-                }
-                else
-                {
-                    MessageBox.Show("Œ¯Ë·Í‡ ÔË ‡Ì‡ÎËÁÂ Ù‡ÈÎ‡", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Œ¯Ë·Í‡ ÔË ‡Ì‡ÎËÁÂ Ù‡ÈÎ‡: {ex.Message}", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                btnVirtualSamplesAnalyze.Enabled = true;
-                Cursor = Cursors.Default;
-            }
-        }
-
-        private void btnVirtualSamplesSave_Click(object sender, EventArgs e)
-        {
-            if (currentVirtualSamplesResult == null || !currentVirtualSamplesResult.IsSuccess)
-                return;
-
-            var saveFileDialog = new SaveFileDialog
-            {
-                Filter = "“ÂÍÒÚÓ‚˚Â Ù‡ÈÎ˚ (*.txt)|*.txt|¬ÒÂ Ù‡ÈÎ˚ (*.*)|*.*",
-                Title = "—Óı‡ÌËÚ¸ ÂÁÛÎ¸Ú‡Ú˚ ‡Ì‡ÎËÁ‡",
-                DefaultExt = "txt"
-            };
-
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                    fileAnalyzer.SaveVirtualSamplesResults(currentVirtualSamplesResult, saveFileDialog.FileName);
-                    MessageBox.Show("–ÂÁÛÎ¸Ú‡Ú˚ ÛÒÔÂ¯ÌÓ ÒÓı‡ÌÂÌ˚", "»ÌÙÓÏ‡ˆËˇ", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Œ¯Ë·Í‡ ÔË ÒÓı‡ÌÂÌËË: {ex.Message}", "Œ¯Ë·Í‡", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private void txtVirtualSamplesFilePath_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void lblMinStdDev_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        // Common DragEnter event handler
-        private void fileTextBox_DragEnter(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                e.Effect = DragDropEffects.Copy;
-            }
-            else
-            {
-                e.Effect = DragDropEffects.None;
-            }
-        }
-
-        // Common DragDrop event handler
-        private void fileTextBox_DragDrop(object sender, DragEventArgs e)
-        {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files.Length > 0 && File.Exists(files[0]))
-            {
-                TextBox targetTextBox = sender as TextBox;
-                targetTextBox.Text = files[0];
-
-                // Enable corresponding analysis button based on TextBox
-                if (targetTextBox == txtFilePath)
-                {
-                    btnAnalyze.Enabled = true;
-                }
-                else if (targetTextBox == txtDetectionLimitFilePath)
-                {
-                    btnDetectionLimitAnalyze.Enabled = true;
-                }
-                else if (targetTextBox == txtVirtualSamplesFilePath)
-                {
-                    btnVirtualSamplesAnalyze.Enabled = true;
-                }
-            }
-        }
-
-        // New event handler for DragEnter on the form
-        private void Form1_DragEnter(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                e.Effect = DragDropEffects.Copy;
-            }
-            else
-            {
-                e.Effect = DragDropEffects.None;
-            }
-        }
-
-        // New event handler for DragDrop on the form
-        private void Form1_DragDrop(object sender, DragEventArgs e)
-        {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files.Length == 0 || !File.Exists(files[0])) return;
-
-            // Determine the active tab and update the corresponding TextBox and file path
-            var activeTab = tabControl1.SelectedTab;
-            if (activeTab == tabRSD)
-            {
-                selectedFilePath = files[0];
-                txtFilePath.Text = selectedFilePath;
-                btnAnalyze.Enabled = true;
-            }
-            else if (activeTab == tabDetectionLimit)
-            {
-                detectionLimitFilePath = files[0];
-                txtDetectionLimitFilePath.Text = detectionLimitFilePath;
-                btnDetectionLimitAnalyze.Enabled = true;
-                btnSaveDetectionReport.Enabled = false;
-            }
-            else if (activeTab == tabVirtualSamples)
-            {
-                virtualSamplesFilePath = files[0];
-                txtVirtualSamplesFilePath.Text = virtualSamplesFilePath;
-                btnVirtualSamplesAnalyze.Enabled = true;
-            }
-
-            // Display success message after a valid file drop
-            StartNotification();
-        }
-
-        // New event handler for key down events
-        private void Form1_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                // Determine active tab and trigger corresponding Analyze button if enabled
-                if (tabControl1.SelectedTab == tabRSD && btnAnalyze.Enabled)
-                {
-                    btnAnalyze.PerformClick();
-                }
-                else if (tabControl1.SelectedTab == tabDetectionLimit && btnDetectionLimitAnalyze.Enabled)
-                {
-                    btnDetectionLimitAnalyze.PerformClick();
-                }
-                else if (tabControl1.SelectedTab == tabVirtualSamples && btnVirtualSamplesAnalyze.Enabled)
-                {
-                    btnVirtualSamplesAnalyze.PerformClick();
-                }
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-        }
-
-        private void NotificationTimer_Tick(object sender, EventArgs e)
-        {
-            lblNotification.Visible = false;
-            notificationTimer.Stop();
-        }
-
-        private void StartNotification()
-        {
-            currentNotificationLabel = GetNotificationLabel();
-            if (currentNotificationLabel == null)
-                return;
-            currentNotificationLabel.Visible = true;
-            notificationAlpha = 0;
-            notificationState = NotificationState.FadeIn;
-            pauseTicks = 0;
-            fadeTimer.Start();
-        }
-
-        private void FadeTimer_Tick(object sender, EventArgs e)
-        {
-            const int step = 15; // alpha increment/decrement
-            switch (notificationState)
-            {
-                case NotificationState.FadeIn:
-                    notificationAlpha += step;
-                    if (notificationAlpha >= 255)
-                    {
-                        notificationAlpha = 255;
-                        notificationState = NotificationState.Pause;
-                    }
-                    break;
-                case NotificationState.Pause:
-                    pauseTicks++;
-                    if (pauseTicks >= 40) // approx 2000ms pause (40*50ms)
-                    {
-                        notificationState = NotificationState.FadeOut;
-                    }
-                    break;
-                case NotificationState.FadeOut:
-                    notificationAlpha -= step;
-                    if (notificationAlpha <= 0)
-                    {
-                        notificationAlpha = 0;
-                        notificationState = NotificationState.Off;
-                        if (currentNotificationLabel != null)
-                            currentNotificationLabel.Visible = false;
-                        fadeTimer.Stop();
-                        return;
-                    }
-                    break;
-            }
-            if (currentNotificationLabel != null)
-                currentNotificationLabel.ForeColor = System.Drawing.Color.FromArgb(notificationAlpha, notificationOriginalColor);
-        }
-
-        private Label GetNotificationLabel()
-        {
-            if (tabControl1.SelectedTab == tabRSD)
-                return lblNotification;
-            else if (tabControl1.SelectedTab == tabDetectionLimit)
-                return lblNotificationDetectionLimit;
-            else if (tabControl1.SelectedTab == tabVirtualSamples)
-                return lblNotificationVirtualSamples;
-            else
-                return lblNotification;
-        }
-
-        // Add this helper method to standardize text coloring behavior
-        private void AppendColoredText(RichTextBox rtb, string message)
-        {
-            if (message.StartsWith("«Ì‡˜ÂÌËÂ ‰ÂÈÙ‡:"))
-            {
-                string[] parts = message.Split(':');
-                if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
-                {
-                    rtb.AppendText("«Ì‡˜ÂÌËÂ ‰ÂÈÙ‡: ");
-                    int startPos = rtb.TextLength;
-                    rtb.AppendText($"{driftValue:F2}");
-                    int endPos = rtb.TextLength;
-
-                    rtb.Select(startPos, endPos - startPos);
-                    if (driftValue > 30)
-                    {
-                        rtb.SelectionColor = Color.Red;
-                    }
-                    else if (driftValue > 25)
-                    {
-                        rtb.SelectionColor = Color.Orange;
-                    }
-                    rtb.SelectionColor = rtb.ForeColor;
-                    rtb.AppendText(Environment.NewLine);
-                }
-                else
-                {
-                    rtb.AppendText(message + Environment.NewLine);
-                }
-            }
-            else
-            {
-                rtb.AppendText(message + Environment.NewLine);
-            }
-        }
-
-        // Add this helper method right after the other helper methods in the Form1 class
-        private void AppendTextWithScroll(RichTextBox rtb, string text, bool colorFormat = false)
-        {
-            if (colorFormat && text.StartsWith("«Ì‡˜ÂÌËÂ ‰ÂÈÙ‡:"))
-            {
-                string[] parts = text.Split(':');
-                if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double driftValue))
-                {
-                    rtb.AppendText("«Ì‡˜ÂÌËÂ ‰ÂÈÙ‡: ");
-
-                    // Store current position for coloring
-                    int startPos = rtb.TextLength;
-                    rtb.AppendText($"{driftValue:F2}");
-                    int endPos = rtb.TextLength;
-
-                    // Select the numeric part
-                    rtb.Select(startPos, endPos - startPos);
-
-                    // Apply color based on value
-                    if (driftValue > 30)
-                    {
-                        rtb.SelectionColor = Color.Red;
-                    }
-                    else if (driftValue > 25)
-                    {
-                        rtb.SelectionColor = Color.Orange;
-                    }
-
-                    // Reset selection and color
-                    rtb.SelectionStart = rtb.TextLength;
-                    rtb.SelectionColor = rtb.ForeColor;
-                    rtb.AppendText(Environment.NewLine);
-                }
-                else
-                {
-                    rtb.AppendText(text + Environment.NewLine);
-                }
-            }
-            else
-            {
-                rtb.AppendText(text + Environment.NewLine);
-            }
-
-            // Ensure scroll to latest text
-            rtb.SelectionStart = rtb.TextLength;
-            rtb.ScrollToCaret();
-        }
-
     }
 }
+

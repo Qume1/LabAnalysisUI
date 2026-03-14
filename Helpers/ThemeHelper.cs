@@ -6,19 +6,23 @@ namespace LabAnalysisUI.Helpers;
 
 public static class ThemeHelper
 {
-    public static Color AppBackground => Color.FromArgb(8, 17, 33);
-    public static Color HeaderBackground => Color.FromArgb(12, 27, 50);
-    public static Color Surface => Color.FromArgb(18, 35, 61);
-    public static Color SurfaceAlt => Color.FromArgb(13, 26, 47);
-    public static Color ResultBackground => Color.FromArgb(10, 21, 39);
-    public static Color Border => Color.FromArgb(42, 78, 118);
-    public static Color Accent => Color.FromArgb(72, 201, 198);
-    public static Color AccentDark => Color.FromArgb(36, 98, 116);
-    public static Color TextPrimary => Color.FromArgb(235, 243, 252);
-    public static Color TextMuted => Color.FromArgb(145, 168, 196);
-    public static Color Success => Color.FromArgb(74, 222, 128);
-    public static Color Warning => Color.FromArgb(250, 204, 21);
-    public static Color Danger => Color.FromArgb(248, 113, 113);
+    public static Color AppBackground => Color.FromArgb(244, 247, 253);
+    public static Color HeaderBackground => Color.FromArgb(232, 239, 255);
+    public static Color Surface => Color.FromArgb(255, 255, 255);
+    public static Color SurfaceAlt => Color.FromArgb(247, 250, 255);
+    public static Color ResultBackground => Color.FromArgb(250, 252, 255);
+    public static Color Border => Color.FromArgb(220, 228, 246);
+    public static Color Accent => Color.FromArgb(41, 150, 240);
+    public static Color AccentSecondary => Color.FromArgb(41, 87, 240);
+    public static Color AccentTertiary => Color.FromArgb(41, 213, 240);
+    public static Color AccentPurple => Color.FromArgb(123, 41, 240);
+    public static Color AccentSoft => Color.FromArgb(138, 163, 244);
+    public static Color AccentDark => Color.FromArgb(28, 72, 179);
+    public static Color TextPrimary => Color.FromArgb(28, 35, 52);
+    public static Color TextMuted => Color.FromArgb(101, 113, 144);
+    public static Color Success => Color.FromArgb(34, 139, 110);
+    public static Color Warning => Color.FromArgb(180, 118, 28);
+    public static Color Danger => Color.FromArgb(191, 67, 92);
 
     public static void ConfigureForm(Form form)
     {
@@ -47,12 +51,12 @@ public static class ThemeHelper
 
     public static void StylePrimaryButton(Button button)
     {
-        ApplyButtonStyle(button, AccentDark, Accent, TextPrimary, 0, Color.Transparent);
+        ApplyButtonStyle(button, Accent, AccentSecondary, Color.White, 0, Accent);
     }
 
     public static void StyleSecondaryButton(Button button)
     {
-        ApplyButtonStyle(button, SurfaceAlt, Color.FromArgb(28, 52, 84), TextPrimary, 1, Border);
+        ApplyButtonStyle(button, SurfaceAlt, Color.FromArgb(237, 242, 255), TextPrimary, 1, AccentSoft);
     }
 
     public static void StyleTextBox(TextBox textBox)
@@ -75,7 +79,7 @@ public static class ThemeHelper
     {
         box.BackColor = ResultBackground;
         box.ForeColor = TextPrimary;
-        box.BorderStyle = BorderStyle.None;
+        box.BorderStyle = BorderStyle.FixedSingle;
         box.Font = new Font("Consolas", 10F, FontStyle.Regular, GraphicsUnit.Point);
     }
 
@@ -90,7 +94,7 @@ public static class ThemeHelper
     {
         label.AutoSize = true;
         label.ForeColor = accent;
-        label.BackColor = Color.FromArgb(26, accent);
+        label.BackColor = Color.FromArgb(28, accent);
         label.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold, GraphicsUnit.Point);
         label.Padding = new Padding(10, 6, 10, 6);
     }
@@ -99,7 +103,11 @@ public static class ThemeHelper
     {
         button.FlatStyle = FlatStyle.Flat;
         button.FlatAppearance.BorderSize = borderSize;
-        button.FlatAppearance.BorderColor = borderColor;
+        if (borderSize > 0)
+        {
+            button.FlatAppearance.BorderColor = borderColor;
+        }
+
         button.BackColor = baseColor;
         button.ForeColor = textColor;
         button.Cursor = Cursors.Hand;
@@ -127,11 +135,19 @@ public static class ThemeHelper
             {
                 button.BackColor = baseColor;
                 button.ForeColor = textColor;
+                if (borderSize > 0)
+                {
+                    button.FlatAppearance.BorderColor = borderColor;
+                }
             }
             else
             {
-                button.BackColor = Color.FromArgb(34, 46, 66);
-                button.ForeColor = TextMuted;
+                button.BackColor = Color.FromArgb(236, 240, 247);
+                button.ForeColor = Color.FromArgb(153, 163, 184);
+                if (borderSize > 0)
+                {
+                    button.FlatAppearance.BorderColor = Border;
+                }
             }
         };
     }
@@ -144,6 +160,7 @@ public static class ThemeHelper
         }
 
         var rectangle = new Rectangle(0, 0, control.Width - 1, control.Height - 1);
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using var pen = new Pen(Border);
         e.Graphics.DrawRectangle(pen, rectangle);
     }
@@ -157,12 +174,27 @@ public static class ThemeHelper
 
         var tabBounds = Rectangle.Inflate(e.Bounds, -6, -4);
         var isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-        using var fillBrush = new SolidBrush(isSelected ? Surface : SurfaceAlt);
         using var borderPen = new Pen(isSelected ? Accent : Border);
         using var path = CreateRoundedRectangle(tabBounds, 12);
 
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        e.Graphics.FillPath(fillBrush, path);
+        if (isSelected)
+        {
+            using var gradient = new LinearGradientBrush(tabBounds, Accent, AccentSoft, LinearGradientMode.Horizontal);
+            var blend = new ColorBlend
+            {
+                Colors = new[] { Accent, AccentSecondary, AccentTertiary, AccentPurple },
+                Positions = new[] { 0F, 0.32F, 0.7F, 1F }
+            };
+            gradient.InterpolationColors = blend;
+            e.Graphics.FillPath(gradient, path);
+        }
+        else
+        {
+            using var fillBrush = new SolidBrush(Surface);
+            e.Graphics.FillPath(fillBrush, path);
+        }
+
         e.Graphics.DrawPath(borderPen, path);
 
         TextRenderer.DrawText(
@@ -170,7 +202,7 @@ public static class ThemeHelper
             tabs.TabPages[e.Index].Text,
             new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold, GraphicsUnit.Point),
             tabBounds,
-            isSelected ? TextPrimary : TextMuted,
+            isSelected ? Color.White : TextMuted,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
     }
 
@@ -188,4 +220,3 @@ public static class ThemeHelper
         return path;
     }
 }
-

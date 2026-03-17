@@ -609,6 +609,7 @@ namespace LabAnalysisUI
         {
             var numeric = new System.Windows.Forms.NumericUpDown
             {
+                Value = value,
                 Minimum = minimum,
                 Maximum = maximum,
                 DecimalPlaces = decimalPlaces,
@@ -617,7 +618,6 @@ namespace LabAnalysisUI
                 Height = 32,
                 Margin = new System.Windows.Forms.Padding(0)
             };
-            numeric.Value = value;
             ThemeHelper.StyleNumeric(numeric);
             return numeric;
         }
@@ -681,6 +681,5 @@ namespace LabAnalysisUI
         }
     }
 }
-
 
 
